@@ -6,7 +6,6 @@
 #include "pcapplusplus/IPv4Layer.h"
 
 #include <cstdio>
-#include <cstdint>
 #include <cctype>
 #include <csignal>
 #include <iostream>
@@ -15,8 +14,15 @@
 
 using namespace pcpp;
 
-static PcapLiveDevice* gDev = nullptr;
-static volatile std::sig_atomic_t gStop = 0;
+static PcapLiveDevice* captureInterface = nullptr;
+static volatile std::sig_atomic_t stopSignal = 0;
+
+static void exitProgram(int) {
+    stopSignal = 1;
+    if (captureInterface && captureInterface->isOpened()) {
+        captureInterface->stopCapture();
+    }
+}
 
 static void hexDump(const uint8_t* data, size_t len) {
     for (size_t i = 0; i < len; i += 16) {
@@ -48,40 +54,32 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* /*dev*/, void*
                       << " --> Destination IP: " << ipLayer->getDstIPv4Address().toString()
                       << std::endl;
         }
+        hexDump(ipLayer->getData(), ipLayer->getDataLen());
     }
-
-}
-
-static void onSigInt(int) {
-    gStop = 1;
-    if (gDev && gDev->isOpened()) gDev->stopCapture();
 }
 
 int main() {
-    std::signal(SIGINT, onSigInt);
+    std::signal(SIGINT, exitProgram);
+    std::signal(SIGSTOP, exitProgram);
 
-    gDev = PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName("wlp0s20f3");
-    if (!gDev) {
-        std::fprintf(stderr, "Interface 'wlp0s20f3' not found.\n");
+    captureInterface = PcapLiveDeviceList::getInstance().getDeviceByName("wlp0s20f3");
+    if (!captureInterface->open()) {
+        return 1;
+    }
+    if (!captureInterface->open()) {
         return 1;
     }
 
-    if (!gDev->open()) {
-        std::fprintf(stderr, "Failed to open interface.\n");
+    if (!captureInterface->startCapture(onPacketArrives, nullptr)) {
+        captureInterface->close();
         return 1;
     }
 
-    if (!gDev->startCapture(onPacketArrives, nullptr)) {
-        std::fprintf(stderr, "Failed to start capture.\n");
-        gDev->close();
-        return 1;
-    }
-
-    while (!gStop) {
+    while (!stopSignal) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    gDev->close();
+    captureInterface->close();
     std::printf("Capture stopped.\n");
     return 0;
 }
