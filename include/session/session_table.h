@@ -1,0 +1,8 @@
+//
+// Created by mikolaj on 11/5/25.
+//
+
+#ifndef BASIC_FIREWALL_SESSION_TABLE_H
+#define BASIC_FIREWALL_SESSION_TABLE_H
+
+#endif //BASIC_FIREWALL_SESSION_TABLE_H
