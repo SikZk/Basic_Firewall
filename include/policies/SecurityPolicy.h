@@ -9,17 +9,7 @@
 
 #include "Policy.h"
 
-class SecurityPolicy {
-    enum class Action {
-        Deny, Allow
-    };
-
-    private:
-        Policy policy;
-        Action action{Action::Deny};
-
-    public:
-        bool pass_security_policy(pcpp::IPv4Layer ipv4_packet);
+class SecurityPolicy : public Policy {
 
 };
 

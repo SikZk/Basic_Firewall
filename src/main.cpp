@@ -8,7 +8,6 @@
 #include <cstdio>
 #include <cctype>
 #include <csignal>
-#include <iostream>
 #include <thread>
 #include <chrono>
 
@@ -43,24 +42,22 @@ static void hexDump(const uint8_t* data, size_t len) {
     std::fflush(stdout);
 }
 
-static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* /*dev*/, void* /*user*/) {
+static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
     Packet parsedPacket(rawPacket);
-    hexDump(rawPacket->getRawData(), rawPacket->getRawDataLen());
-
-    if (parsedPacket.isPacketOfType(pcpp::IPv4)) {
-        auto* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
-        if (ipLayer) {
-            std::cout << "Source IP: " << ipLayer->getSrcIPv4Address().toString()
-                      << " --> Destination IP: " << ipLayer->getDstIPv4Address().toString()
-                      << std::endl;
-        }
-        hexDump(ipLayer->getData(), ipLayer->getDataLen());
+    if (!parsedPacket.isPacketOfType(IPv4)) {
+        return;
     }
+    IPv4Layer* ipLayerPacket = parsedPacket.getLayerOfType<IPv4Layer>();
+
+    hexDump(rawPacket->getRawData(), rawPacket->getRawDataLen());
+    hexDump(ipLayerPacket->getData(), ipLayerPacket->getDataLen());
 }
 
 int main() {
     std::signal(SIGINT, exitProgram);
     std::signal(SIGSTOP, exitProgram);
+
+
 
     captureInterface = PcapLiveDeviceList::getInstance().getDeviceByName("wlp0s20f3");
     if (!captureInterface->open()) {

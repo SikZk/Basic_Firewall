@@ -5,16 +5,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(Basic_Firewall src/main.cpp
         include/policies/SecurityPolicy.h
-        include/policies/nat_policy.h
-        include/security_profiles/url_filtering_profile.h
-        include/security_profiles/antimalware_profile.h
-        include/security_profiles/dlp_profile.h
-        include/decryption/decryption_profile.h
-        include/session/session.h
-        include/session/session_table.h
-        include/routing/routing_table.h
-        include/configuration/configuration_parser.h
-        include/configuration/config.h
+        include/policies/NatPolicy.h
+        include/security_profiles/UrlFilteringProfile.h
+        include/security_profiles/AntimalwareProfile.h
+        include/security_profiles/DlpProfile.h
+        include/decryption/DecryptionProfile.h
+        include/session/Session.h
+        include/routing/RoutingTable.h
+        include/configuration/Config.h
         include/policies/Policy.h)
 
 target_include_directories(Basic_Firewall PRIVATE

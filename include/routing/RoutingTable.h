@@ -5,4 +5,8 @@
 #ifndef BASIC_FIREWALL_ROUTING_TABLE_H
 #define BASIC_FIREWALL_ROUTING_TABLE_H
 
+class RoutingTable {
+
+};
+
 #endif //BASIC_FIREWALL_ROUTING_TABLE_H
