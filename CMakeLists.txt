@@ -10,7 +10,7 @@ add_executable(Basic_Firewall src/main.cpp
         include/security_profiles/AntimalwareProfile.h
         include/security_profiles/DlpProfile.h
         include/decryption/DecryptionProfile.h
-        include/session/Session.h
+        include/session/sessions/Session.h
         include/routing/RoutingTable.h
         include/configuration/Config.h
         include/policies/Policy.h)
