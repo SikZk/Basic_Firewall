@@ -4,17 +4,21 @@
 
 #ifndef BASIC_FIREWALL_SECURITYPROFILE_H
 #define BASIC_FIREWALL_SECURITYPROFILE_H
+#include <string>
 
-class SecurityProfile {
-    enum Action {
-        ALLOW,
-        BLOCK,
-        LOG_ONLY
-    };
-
-    virtual ~SecurityProfile() = default;
-
-    virtual Action scan(const std::string& data_to_scan, uint64_t session_id) = 0;
+#include "../session/sessions/DecryptionSession.h"
+#include "../session/sessions/Session.h"
+enum Action {
+    ALLOW,
+    BLOCK,
+    ALERT
 };
 
-#endif //BASIC_FIREWALL_SECURITYPROFILE_H
+class SecurityProfile {
+
+
+
+    virtual Action scan(const DecryptionSession, pcpp::IPv4Layer ipv4_packet) = 0;
+};
+
+#endif

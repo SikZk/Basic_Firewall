@@ -12,7 +12,10 @@
 
 class NatSessionTable : public SessionTable{
     private:
+        using SessionMap = boost::unordered_map<SessionFlowKey, NatSession, SessionKeyHash, SessionKeyEq>;
+        static SessionMap nat_sessions;
     public:
+
         Session& createSession(SessionFlowKey const& key, NatSession session) override;
 };
 

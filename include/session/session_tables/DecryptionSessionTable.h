@@ -13,9 +13,11 @@
 
 class DecryptionSessionTable : public SessionTable{
 private:
+    using SessionMap = boost::unordered_map<SessionFlowKey, DecryptionSession, SessionKeyHash, SessionKeyEq>;
+    static SessionMap decryption_sessions;
     mutable std::shared_mutex rw_lock;
 public:
-    Session& createSession(SessionFlowKey const& key, DecryptionSession session) override;
+    Session& createSession(SessionFlowKey const& key, DecryptionSession session);
 
 };
 

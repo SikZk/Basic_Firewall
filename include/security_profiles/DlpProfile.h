@@ -6,7 +6,7 @@
 #define BASIC_FIREWALL_DLP_PROFILE_H
 #include "SecurityProfile.h"
 
-class DlpProfile : SecurityProfile {
+class DlpProfile : public SecurityProfile {
 
 };
 

@@ -4,13 +4,14 @@
 
 #ifndef BASIC_FIREWALL_DECRYPTION_PROFILE_H
 #define BASIC_FIREWALL_DECRYPTION_PROFILE_H
-#include "../session/session.h"
-#include <vector>
+
+
 #include <string>
 
 
 class DecryptionProfile {
     public:
+        bool should_decrypt;
         std::string profile_name;
         std::string ca_certificate_path;
         std::string ca_private_key_path;
@@ -21,15 +22,14 @@ class DecryptionProfile {
                           std::string from_ip, uint32_t from_mask,
                           std::string to_ip, uint32_t to_mask);
 
-        ~DecryptionProfile() = default;
-
         bool loadCryptoMaterial();
-        bool shouldDecrypt(const pcpp::Packet& packet);
-
+        bool shouldDecrypt();
+        bool doesMatchProfile(Session const& session) const;
+        uint8_t* decrypt();
     private:
         pcpp::IPv4Network network_from;
         pcpp::IPv4Network network_to;
    };
 
 
-#endif //BASIC_FIREWALL_DECRYPTION_PROFILE_H
+#endif

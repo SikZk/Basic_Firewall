@@ -11,12 +11,15 @@ class SessionTable {
     public:
         using SessionMap = boost::unordered_map<SessionFlowKey, Session, SessionKeyHash, SessionKeyEq>;
     private:
-        SessionMap sessions_;
+        static SessionMap sessions_;
 
     public:
+        SessionTable();
         Session* findSession(SessionFlowKey const& key);
         virtual Session& createSession(SessionFlowKey const& key, Session session);
         void eraseSession(SessionFlowKey const& key);
+        bool isPacketEndingSession(const pcpp::TcpLayer& tcpLayer) const;
+        bool doesSessionExist(const SessionFlowKey& key) const;
 };
 
 #endif //BASIC_FIREWALL_SESSIONTABLE_H

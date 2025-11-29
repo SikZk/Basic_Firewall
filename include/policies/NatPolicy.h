@@ -7,7 +7,9 @@
 
 #include <boost/unordered_set.hpp>
 #include <vector>
+#include <pcapplusplus/RawPacket.h>
 #include "../session/session_tables/NatSessionTable.h"
+
 
 class NatPolicy : public Policy {
     private:
@@ -33,6 +35,9 @@ class NatPolicy : public Policy {
         )
         { };
         static void configureNatState(uint16_t port_start, uint16_t port_end);
+
+        pcpp::IPv4Layer applyNat(pcpp::IPv4Layer* ipLayer);
+
 };
 
 #endif

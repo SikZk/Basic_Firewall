@@ -24,7 +24,7 @@ struct SessionFlowKey {
     uint16_t          src_port;
     pcpp::IPv4Address dst_ip;
     uint16_t          dst_port;
-    uint8_t           protocol;
+    pcpp::ProtocolType protocol;
 };
 
 struct SessionKeyHash {
@@ -61,6 +61,7 @@ class Session {
         SessionFlow source_to_destination;
         SessionFlow destination_to_source;
         SessionState session_state;
+        uint8_t* data;
     public:
         Session(
             pcpp::IPv4Address firewall_interface_src_ip,
@@ -77,6 +78,9 @@ class Session {
             pcpp::IPv4Address destination_ip,
             uint16_t          destination_port
         );
+        uint8_t* getData();
+        uint8_t getDataLength();
+        uint8_t appendData(uint8_t* new_data, uint8_t length);
 
 };
 

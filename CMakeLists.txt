@@ -13,7 +13,8 @@ add_executable(Basic_Firewall src/main.cpp
         include/session/sessions/Session.h
         include/routing/RoutingTable.h
         include/configuration/Config.h
-        include/policies/Policy.h)
+        include/policies/Policy.h
+        src/utils.cpp)
 
 target_include_directories(Basic_Firewall PRIVATE
         /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/include

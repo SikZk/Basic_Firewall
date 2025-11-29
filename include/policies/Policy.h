@@ -28,9 +28,9 @@ class Policy {
         source_port(std::move(src_port)), destination_port(std::move(dest_port)) { };
 
     // Metoda sprawdzająca czy dany pakiet pasuje do polityki
-    bool match_policy(pcpp::IPv4Layer ipv4_packet);
+    bool does_match_policy(pcpp::IPv4Layer ipv4_packet);
 
 
 };
 
-#endif //BASIC_FIREWALL_POLICY_H
+#endif

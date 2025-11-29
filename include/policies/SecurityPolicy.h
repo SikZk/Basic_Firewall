@@ -4,13 +4,44 @@
 
 #ifndef BASIC_FIREWALL_SECURITY_POLICY_H
 #define BASIC_FIREWALL_SECURITY_POLICY_H
-#include <pcapplusplus/IpAddress.h>
-#include <pcapplusplus/IPv4Layer.h>
 
+#include <pcapplusplus/IPv4Layer.h>
+#include <vector>
+#include <string>
+#include <memory_resource>
 #include "Policy.h"
 
-class SecurityPolicy : public Policy {
+#include "../security_profiles/SecurityProfile.h"
 
+class SecurityPolicy : public Policy {
+    private:
+        bool allow_packet;
+        std::vector<SecurityProfile> security_profiles;
+    public:
+        SecurityPolicy(
+            std::pmr::string network_from_str,
+            std::uint32_t    from_mask,
+            std::pmr::string network_to_str,
+            std::uint32_t    to_mask,
+            std::uint16_t    src_port,
+            std::uint16_t    dest_port,
+            bool             allow_packet,
+            std::vector<SecurityProfile> security_profiles
+        )
+        : Policy(
+            std::move(network_from_str),
+            from_mask,
+            std::move(network_to_str),
+            to_mask,
+            src_port,
+            dest_port
+        ),
+          allow_packet(allow_packet),
+          security_profiles(std::move(security_profiles))
+        {};
+
+        std::vector<SecurityProfile> evaluate_security_profiles(pcpp::IPv4Layer& ipv4_packet);
+        bool is_allow_packet();
 };
 
 #endif //BASIC_FIREWALL_SECURITY_POLICY_H
