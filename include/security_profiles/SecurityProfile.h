@@ -15,7 +15,8 @@ enum Action {
 };
 
 class SecurityProfile {
-
+    public:
+        SecurityProfile();
 
 
     virtual Action scan(const DecryptionSession, pcpp::IPv4Layer ipv4_packet) = 0;

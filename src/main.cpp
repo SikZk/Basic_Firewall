@@ -19,6 +19,7 @@ using namespace pcpp;
 
 static PcapLiveDevice* captureInterface = nullptr;
 static Config configuration("../resources/config.json");
+
 static volatile std::sig_atomic_t stopSignal = 0;
 static SessionTable sessionTable;
 static DecryptionSessionTable decryptionSessionTable;
@@ -36,25 +37,19 @@ static void exitProgram(int) {
 
 
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
-
     Packet parsedPacket(rawPacket);
-    if (!parsedPacket.isPacketOfType(IPv4)) {
+    if (parsedPacket.isPacketOfType(Ethernet)) {
         return;
     }
     IPv4Layer* ipLayerPacket = parsedPacket.getLayerOfType<IPv4Layer>();
     TcpLayer* tcpLayerPacket = parsedPacket.getLayerOfType<TcpLayer>();
 
-    SecurityPolicy security_policy = match_security_policy(
-        *ipLayerPacket,
+    auto security_policy = matchBasedOnObject<IPv4Layer, SecurityPolicy>(
+        ipLayerPacket,
         configuration.security_policies
     );
-    if (!security_policy.is_allow_packet()) {
-        return;
-    }
 
-    std::vector<SecurityProfile> security_profiles_to_apply =
-        security_policy.evaluate_security_profiles(*ipLayerPacket);
-
+    if (!security_policy.getAllowPacket()) return;
     SessionFlowKey key{
         ipLayerPacket->getSrcIPAddress().getIPv4(),
         tcpLayerPacket->getSrcPort(),
@@ -63,18 +58,26 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         ipLayerPacket->getProtocol()
     };
     //TODO improve the way of creating sessions and matching policies from configuration, this could be wrapped into some generic function
-    Session session = createOrGetSession(
-        sessionTable,
+
+    Session* session = createOrGetSession(
+     sessionTable,
         key,
         ipLayerPacket,
         tcpLayerPacket,
         captureInterface
     );
-    //TODO improve the way of creating sessions and matching policies from configuration, this could be wrapped into some generic function
-    DecryptionProfile decryption_profile = matchDecryptionProfile(
+
+    auto decryption_profile = matchBasedOnObject<Session, DecryptionProfile>(
         session,
         configuration.decryption_profiles
     );
+    auto nat_policy = matchBasedOnObject<Session, NatPolicy >(
+        session,
+        configuration.nat_policies
+    );
+
+    //TODO improve the way of creating sessions and matching policies from configuration, this could be wrapped into some generic function
+    // TODO create DecryptionSession only if matched DecryptionProfile has should_decrypt = true
     DecryptionSession decryption_session = createOrGetDecryptionSession(
         decryptionSessionTable,
         key,
@@ -82,22 +85,19 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         decryption_profile
     );
     bool packet_is_last_in_session = sessionTable.isPacketEndingSession(*tcpLayerPacket);
-    if (packet_is_last_in_session) {
 
-        if (decryption_profile.shouldDecrypt()) {
-            decryptionManager.decrypt_and_enhance_session(decryption_session);
-            // TODO somehow fix this iteration, its not working because SecurityProfile is abstract class, not sure how to work around that
-            for (SecurityProfile profile : security_profiles_to_apply) {
-                Action action = profile.scan(decryption_session, *ipLayerPacket);
-            }
+    std::vector<SecurityProfile> security_profiles_to_apply =
+        security_policy.evaluate_security_profiles(*ipLayerPacket);
 
+    if (decryption_profile.shouldDecrypt()) {
+        decryptionManager.decrypt_and_enhance_session(decryption_session);
+        // TODO somehow fix this iteration, its not working because SecurityProfile is abstract class, not sure how to work around that
+        for (SecurityProfile profile : security_profiles_to_apply) {
+            Action action = profile.scan(decryption_session, *ipLayerPacket);
         }
     }
+
     //TODO improve the way of creating sessions and matching policies from configuration, this could be wrapped into some generic function
-    NatPolicy nat_policy = matchNatPolicy(
-        session,
-        configuration.nat_policies
-    );
     NatSession nat_session = createOrGetNatSession(
         natSessionTable,
         key,
@@ -109,6 +109,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
     // ROUTING SHOULD TAKE PLACE HERE
 
 
+
     if (packet_is_last_in_session) {
         sessionTable.eraseSession(key);
         natSessionTable.eraseSession(key);
@@ -117,19 +118,14 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
 }
 
 int main() {
-    captureInterface = PcapLiveDeviceList::getInstance().getDeviceByName("wlp0s20f3");
-
     std::signal(SIGINT, exitProgram);
     std::signal(SIGSTOP, exitProgram);
 
-    if (!captureInterface->open()) {
-        return 1;
-    }
-    if (!captureInterface->open()) {
-        return 1;
-    }
-
     configuration.load();
+    // TODO make some way of creating capture interfaces based on config
+    captureInterface = PcapLiveDeviceList::getInstance().getDeviceByName("wlp0s20f3");
+
+    if (!captureInterface->open()) return 1;
 
     if (!captureInterface->startCapture(onPacketArrives, nullptr)) {
         captureInterface->close();
@@ -139,8 +135,6 @@ int main() {
     while (!stopSignal) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
-
     captureInterface->close();
-    std::printf("Capture stopped.\n");
     return 0;
 }

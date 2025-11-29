@@ -41,7 +41,7 @@ class SecurityPolicy : public Policy {
         {};
 
         std::vector<SecurityProfile> evaluate_security_profiles(pcpp::IPv4Layer& ipv4_packet);
-        bool is_allow_packet();
+        bool getAllowPacket();
 };
 
 #endif //BASIC_FIREWALL_SECURITY_POLICY_H

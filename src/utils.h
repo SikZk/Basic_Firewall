@@ -4,6 +4,7 @@
 
 #ifndef BASIC_FIREWALL_UTILS_H
 #define BASIC_FIREWALL_UTILS_H
+
 #include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/IPv4Layer.h"
@@ -11,9 +12,20 @@
 #include "../include/session/session_tables/DecryptionSessionTable.h"
 using namespace pcpp;
 
-SecurityPolicy match_security_policy(pcpp::IPv4Layer& ipLayerPacket, std::vector<SecurityPolicy>& security_profiles);
 
-Session createOrGetSession(
+
+SecurityPolicy matchSecurityPolicy(
+    IPv4Layer& ipLayerPacket,
+    std::vector<SecurityPolicy>& security_profiles
+);
+
+template <typename C, typename T>
+T matchBasedOnObject(
+    C* c,
+    std::vector<T>& data_to_match_object_to
+);
+
+Session* createOrGetSession(
     SessionTable &sessionTable,
     const SessionFlowKey& key,
     const IPv4Layer* ipLayerPacket,
@@ -22,22 +34,25 @@ Session createOrGetSession(
 );
 
 DecryptionProfile matchDecryptionProfile(
-    Session session, std::vector<DecryptionProfile>& decryption_profiles
+    Session session,
+    std::vector<DecryptionProfile>& decryption_profiles
 );
+
 NatPolicy matchNatPolicy(
-    Session session, std::vector<NatPolicy>& nat_policy
+    Session session,
+    std::vector<NatPolicy>& nat_policy
 );
 
 DecryptionSession createOrGetDecryptionSession(
    DecryptionSessionTable &decryptionSessionTable,
    const SessionFlowKey& key,
-   Session session,
+   Session* session,
    DecryptionProfile decryption_profile
 );
 NatSession createOrGetNatSession(
    NatSessionTable &decryptionSessionTable,
    const SessionFlowKey& key,
-   Session session,
+   Session* session,
    NatPolicy nat_policy
 );
 

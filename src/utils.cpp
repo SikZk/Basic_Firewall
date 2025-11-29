@@ -5,8 +5,12 @@
 #include "../include/session/sessions/Session.h"
 using namespace pcpp;
 
-SecurityPolicy match_security_policy(const IPv4Layer&  ipLayerPacket, const std::vector<SecurityPolicy>& security_profiles) {
-    for (SecurityPolicy security_policy: security_profiles) {
+
+
+
+
+SecurityPolicy match_security_policy(const IPv4Layer&  ipLayerPacket, const std::vector<SecurityPolicy>& security_policies) {
+    for (SecurityPolicy security_policy: security_policies) {
         if (security_policy.does_match_policy(ipLayerPacket)) {
             return security_policy;
         }
@@ -14,7 +18,7 @@ SecurityPolicy match_security_policy(const IPv4Layer&  ipLayerPacket, const std:
     throw std::runtime_error("No matching security policy found");
 }
 
-Session createOrGetSession(
+Session* createOrGetSession(
     SessionTable &sessionTable,
     const SessionFlowKey& key,
     const IPv4Layer* ipLayerPacket,

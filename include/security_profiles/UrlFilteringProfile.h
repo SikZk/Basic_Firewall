@@ -7,7 +7,8 @@
 #include "SecurityProfile.h"
 
 class UrlFilteringProfile : public SecurityProfile {
-
+public:
+    UrlFilteringProfile();
 
 };
 
