@@ -13,18 +13,16 @@
 using namespace pcpp;
 
 
-
-SecurityPolicy matchSecurityPolicy(
-    IPv4Layer& ipLayerPacket,
-    std::vector<SecurityPolicy>& security_profiles
-);
-
 template <typename C, typename T>
 T matchBasedOnObject(
     C* c,
     std::vector<T>& data_to_match_object_to
 );
 
+SessionFlowKey getSessionFlowKey(
+    const IPv4Layer* ipLayerPacket,
+    const TcpLayer* tcpLayerPacket
+);
 Session* createOrGetSession(
     SessionTable &sessionTable,
     const SessionFlowKey& key,
@@ -32,17 +30,6 @@ Session* createOrGetSession(
     const TcpLayer* tcpLayerPacket,
     PcapLiveDevice* captureInterface
 );
-
-DecryptionProfile matchDecryptionProfile(
-    Session session,
-    std::vector<DecryptionProfile>& decryption_profiles
-);
-
-NatPolicy matchNatPolicy(
-    Session session,
-    std::vector<NatPolicy>& nat_policy
-);
-
 DecryptionSession createOrGetDecryptionSession(
    DecryptionSessionTable &decryptionSessionTable,
    const SessionFlowKey& key,
@@ -55,6 +42,6 @@ NatSession createOrGetNatSession(
    Session* session,
    NatPolicy nat_policy
 );
-
+bool isNotEncryptedSession(Session *session);
 
 #endif

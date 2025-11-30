@@ -4,9 +4,7 @@
 #include "pcapplusplus/RawPacket.h"
 #include "pcapplusplus/Packet.h"
 #include "pcapplusplus/IPv4Layer.h"
-
 #include <cstdio>
-#include <cctype>
 #include <csignal>
 #include <thread>
 #include <chrono>
@@ -14,6 +12,8 @@
 #include "./utils.h"
 #include "../include/session/session_tables/DecryptionSessionTable.h"
 #include "../include/decryption/DecryptionManager.h"
+#include "../include/policies/NatService.h"
+#include "../include/routing/RoutingEngine.h"
 
 using namespace pcpp;
 
@@ -23,8 +23,12 @@ static Config configuration("../resources/config.json");
 static volatile std::sig_atomic_t stopSignal = 0;
 static SessionTable sessionTable;
 static DecryptionSessionTable decryptionSessionTable;
-DecryptionManager decryptionManager;
 static NatSessionTable natSessionTable;
+
+static RoutingEngine routingEngine;
+
+DecryptionManager decryptionManager;
+NatService natService;
 
 
 
@@ -48,16 +52,8 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         ipLayerPacket,
         configuration.security_policies
     );
-
     if (!security_policy.getAllowPacket()) return;
-    SessionFlowKey key{
-        ipLayerPacket->getSrcIPAddress().getIPv4(),
-        tcpLayerPacket->getSrcPort(),
-        ipLayerPacket->getDstIPAddress().getIPv4(),
-        tcpLayerPacket->getDstPort(),
-        ipLayerPacket->getProtocol()
-    };
-    //TODO improve the way of creating sessions and matching policies from configuration, this could be wrapped into some generic function
+    SessionFlowKey key = getSessionFlowKey(ipLayerPacket, tcpLayerPacket);
 
     Session* session = createOrGetSession(
      sessionTable,
@@ -75,42 +71,43 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         session,
         configuration.nat_policies
     );
+    std::vector<SecurityProfile> security_profiles_to_apply = security_policy.evaluate_security_profiles(*ipLayerPacket);
 
-    //TODO improve the way of creating sessions and matching policies from configuration, this could be wrapped into some generic function
-    // TODO create DecryptionSession only if matched DecryptionProfile has should_decrypt = true
-    DecryptionSession decryption_session = createOrGetDecryptionSession(
-        decryptionSessionTable,
-        key,
-        session,
-        decryption_profile
-    );
-    bool packet_is_last_in_session = sessionTable.isPacketEndingSession(*tcpLayerPacket);
-
-    std::vector<SecurityProfile> security_profiles_to_apply =
-        security_policy.evaluate_security_profiles(*ipLayerPacket);
-
-    if (decryption_profile.shouldDecrypt()) {
+    Action action = ALLOW;
+    if (isNotEncryptedSession(session)) {
+        for (SecurityProfile profile : security_profiles_to_apply) {
+            action = profile.scan(session, *ipLayerPacket);
+        }
+    } else if (decryption_profile.shouldDecrypt()) {
+        DecryptionSession decryption_session = createOrGetDecryptionSession(
+         decryptionSessionTable,
+            key,
+            session,
+            decryption_profile
+        );
         decryptionManager.decrypt_and_enhance_session(decryption_session);
+
         // TODO somehow fix this iteration, its not working because SecurityProfile is abstract class, not sure how to work around that
         for (SecurityProfile profile : security_profiles_to_apply) {
-            Action action = profile.scan(decryption_session, *ipLayerPacket);
+            action = profile.scan(decryption_session, *ipLayerPacket);
         }
     }
 
-    //TODO improve the way of creating sessions and matching policies from configuration, this could be wrapped into some generic function
     NatSession nat_session = createOrGetNatSession(
         natSessionTable,
         key,
         session,
         nat_policy
     );
+    IPv4Layer* translated_packet = natService.applyNat(nat_session, ipLayerPacket);
+
     // TODO implement routing here, there should be some function like route that gets nat_session, the NAT could be implemented either in routing engine itself,
     // TODO in some NAT manager similar in logic to decryptionManager
     // ROUTING SHOULD TAKE PLACE HERE
 
+    routingEngine.routePacket(translated_packet, ipLayerPacket);
 
-
-    if (packet_is_last_in_session) {
+    if (sessionTable.isPacketEndingSession(*tcpLayerPacket)) {
         sessionTable.eraseSession(key);
         natSessionTable.eraseSession(key);
         decryptionSessionTable.eraseSession(key);
@@ -122,19 +119,23 @@ int main() {
     std::signal(SIGSTOP, exitProgram);
 
     configuration.load();
-    // TODO make some way of creating capture interfaces based on config
-    captureInterface = PcapLiveDeviceList::getInstance().getDeviceByName("wlp0s20f3");
+    routingEngine.loadInterfaces(configuration.getCaptureInterfaces());
 
-    if (!captureInterface->open()) return 1;
+    for (PcapLiveDevice* interface : configuration.getCaptureInterfaces()) {
+        if (!interface->open()) return 1;
 
-    if (!captureInterface->startCapture(onPacketArrives, nullptr)) {
-        captureInterface->close();
-        return 1;
+        if (!interface->startCapture(onPacketArrives, nullptr)) {
+            interface->close();
+            return 1;
+        }
     }
 
     while (!stopSignal) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
-    captureInterface->close();
+
+    for (PcapLiveDevice* interface : configuration.getCaptureInterfaces()) {
+        interface->close();
+    }
     return 0;
 }

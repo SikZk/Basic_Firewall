@@ -1,5 +1,6 @@
 {
   "interfaces": {
-      "port1": "wlp0s20f3"
+      "port1": "wlp0s20f3",
+      "port2": "enp3s0"
   }
 }

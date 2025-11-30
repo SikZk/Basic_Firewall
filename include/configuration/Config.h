@@ -18,8 +18,10 @@ class Config {
 
         Config(std::pmr::string file_path)
             : configuration_file_path(std::move(file_path)) {};
-        ~Config() = default;
+
         void load();
+
+        std::vector<pcpp::PcapLiveDevice*> getCaptureInterfaces();
     private:
         // pamiętajmy aby dodać tutaj na końcu profilu decryption_profile.should_decrypt = false; dla wszystkich sesji
         void parseDecryptionProfile(const boost::json::value& object);
@@ -28,6 +30,7 @@ class Config {
         void parseNatPolicy(const boost::json::value& object);
         void parseRoutingTable(const boost::json::value& object);
         void loadFromFile(const std::string& filepath);
+        void parseInterfaces(const boost::json::value& object);
 
 };
 #endif
