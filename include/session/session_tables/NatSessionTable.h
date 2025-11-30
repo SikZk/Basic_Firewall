@@ -16,7 +16,7 @@ class NatSessionTable : public SessionTable{
         static SessionMap nat_sessions;
     public:
 
-        Session& createSession(SessionFlowKey const& key, NatSession session) override;
+        Session& createSession(SessionFlowKey const& key, NatSession session);
 };
 
 class PortPool {

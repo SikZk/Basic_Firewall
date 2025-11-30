@@ -16,7 +16,7 @@
 class SecurityPolicy : public Policy {
     private:
         bool allow_packet;
-        std::vector<SecurityProfile> security_profiles;
+        std::vector<std::shared_ptr<SecurityProfile>> security_profiles;
     public:
         SecurityPolicy(
             std::pmr::string network_from_str,
@@ -26,7 +26,7 @@ class SecurityPolicy : public Policy {
             std::uint16_t    src_port,
             std::uint16_t    dest_port,
             bool             allow_packet,
-            std::vector<SecurityProfile> security_profiles
+            std::vector<std::shared_ptr<SecurityProfile>> security_profiles
         )
         : Policy(
             std::move(network_from_str),

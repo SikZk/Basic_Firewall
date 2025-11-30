@@ -16,10 +16,12 @@ enum Action {
 
 class SecurityProfile {
     public:
-        SecurityProfile();
+    virtual ~SecurityProfile() = default;
+
+    SecurityProfile();
 
 
-    virtual Action scan(const DecryptionSession, pcpp::IPv4Layer ipv4_packet) = 0;
+    virtual Action scan(const DecryptionSession&, pcpp::IPv4Layer ipv4_packet) = 0;
 };
 
 #endif

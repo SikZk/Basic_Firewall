@@ -6,6 +6,7 @@
 #define BASIC_FIREWALL_DECRYPTIONMANAGER_H
 
 #include "../session/sessions/Session.h"
+#include <openssl/types.h>
 
 class DecryptionManager {
     SSL_CTX* ctx_server; // Kontekst, gdy udajemy serwer (dla client_side)

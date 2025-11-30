@@ -13,6 +13,7 @@ class Config {
         std::vector<DecryptionProfile> decryption_profiles;
         std::vector<SecurityPolicy> security_policies;
         std::vector<NatPolicy> nat_policies;
+        std::vector<std::string> malware_hashes;
         RoutingTable routing_table;
         std::pmr::string configuration_file_path;
 
@@ -31,6 +32,6 @@ class Config {
         void parseRoutingTable(const boost::json::value& object);
         void loadFromFile(const std::string& filepath);
         void parseInterfaces(const boost::json::value& object);
-
+        void loadMalwareDatabase(const boost::json::value& object); // bierze sciezke podana w configu do bazki z samplami
 };
 #endif

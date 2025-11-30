@@ -87,7 +87,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         );
         decryptionManager.decrypt_and_enhance_session(decryption_session);
 
-        // TODO somehow fix this iteration, its not working because SecurityProfile is abstract class, not sure how to work around that
+        // TODO somehow fix this iteration, its not working because SecurityProfile is abstract class, not sure how to work around that (uzyj shared ptra!!)
         for (SecurityProfile profile : security_profiles_to_apply) {
             action = profile.scan(decryption_session, *ipLayerPacket);
         }
