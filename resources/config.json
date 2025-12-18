@@ -1,6 +1,55 @@
 {
   "interfaces": {
-      "port1": "wlp0s20f3",
-      "port2": "enp3s0"
-  }
+    "port1": "wlp0s20f3"
+  },
+  "decryption_profiles": [
+    {
+      "name": "example_tls_inspection",
+      "ca": "resources/certs/ca.crt",
+      "key": "resources/certs/ca.key",
+      "from": "192.168.2.0",
+      "from_mask": 4294967040,
+      "to": "0.0.0.0",
+      "to_mask": 0
+    }
+  ],
+  "security_policies": [
+    {
+      "from": "192.168.2.0",
+      "from_mask": 4294967040,
+      "to": "0.0.0.0",
+      "to_mask": 0,
+      "src_port": 0,
+      "dst_port": 0,
+      "allow": true
+    }
+  ],
+  "nat_policies": [
+    {
+      "from": "192.168.2.0",
+      "from_mask": 4294967040,
+      "to": "0.0.0.0",
+      "to_mask": 0,
+      "src_port": 0,
+      "dst_port": 0
+    }
+  ],
+  "routing": [
+    {
+      "network": "0.0.0.0",
+      "mask": "0.0.0.0",
+      "gateway": "192.168.2.1",
+      "iface": "wlp0s20f3"
+    },
+    {
+      "network": "192.168.2.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "iface": "wlp0s20f3"
+    }
+  ],
+  "malware_db": [
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+  ]
 }
