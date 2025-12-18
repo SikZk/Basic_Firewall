@@ -9,7 +9,7 @@
 #include <vector>
 #include <pcapplusplus/RawPacket.h>
 #include "../session/session_tables/NatSessionTable.h"
-
+#include "Policy.h"
 
 class NatPolicy : public Policy {
     private:
