@@ -15,7 +15,7 @@ bool DecryptionManager::processPacket(Session* /*session*/, pcpp::Packet& /*pack
     return false;
 }
 
-void DecryptionManager::decrypt_and_enhance_session(DecryptionSession /*decryption_session*/) {
+void DecryptionManager::decrypt_and_enhance_session(const DecryptionSession& /*decryption_session*/) {
     // placeholder
 }
 

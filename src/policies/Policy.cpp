@@ -6,15 +6,21 @@
 #include "../../include/policies/Policy.h"
 
 namespace {
-bool matchNetwork(const pcpp::IPAddress& address, const pcpp::IPv4Network& network) {
-    if (!address.isIPv4()) return false;
-    return network.contains(address.getIPv4());
-}
+uint32_t maskFromPrefix(uint8_t prefixLen) {
+    if (prefixLen == 0) return 0;
+    return htonl(0xFFFFFFFFu << (32 - prefixLen));
 }
 
+bool matchNetwork(const pcpp::IPAddress& address, const pcpp::IPv4Address& network, uint8_t prefixLen) {
+    if (!address.isIPv4()) return false;
+    uint32_t mask = maskFromPrefix(prefixLen);
+    return (address.getIPv4().toInt() & mask) == (network.toInt() & mask);
+}
+} // namespace
+
 bool Policy::does_match_policy(pcpp::IPv4Layer ipv4_packet) {
-    bool src_ip_match = matchNetwork(ipv4_packet.getSrcIPAddress(), network_from);
-    bool dst_ip_match = matchNetwork(ipv4_packet.getDstIPAddress(), network_to);
+    bool src_ip_match = matchNetwork(ipv4_packet.getSrcIPAddress(), network_from_base, network_from_prefix);
+    bool dst_ip_match = matchNetwork(ipv4_packet.getDstIPAddress(), network_to_base, network_to_prefix);
 
     pcpp::TcpLayer* tcpLayer = nullptr;
     for (auto* layer = ipv4_packet.getNextLayer(); layer != nullptr; layer = layer->getNextLayer()) {

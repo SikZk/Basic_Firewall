@@ -12,6 +12,11 @@ uint8_t maskToPrefix(const pcpp::IPv4Address& mask) {
     }
     return count;
 }
+
+bool addressMatches(const pcpp::IPv4Address& address, const pcpp::IPv4Address& network, const pcpp::IPv4Address& mask) {
+    uint32_t maskValue = mask.toInt();
+    return (address.toInt() & maskValue) == (network.toInt() & maskValue);
+}
 }
 
 void RoutingTable::addRoute(
@@ -37,7 +42,7 @@ void RoutingTable::removeRoute(const pcpp::IPv4Address& network, const pcpp::IPv
 
 std::optional<RouteEntry> RoutingTable::findRoute(const pcpp::IPv4Address& destinationIP) {
     for (const auto& route : routes) {
-        if (destinationIP.matchSubnet(route.network, maskToPrefix(route.netmask))) {
+        if (addressMatches(destinationIP, route.network, route.netmask)) {
             return route;
         }
     }
