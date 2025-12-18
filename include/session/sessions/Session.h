@@ -4,6 +4,7 @@
 
 #ifndef BASIC_FIREWALL_SESSION_H
 #define BASIC_FIREWALL_SESSION_H
+#include <vector>
 #include <boost/container_hash/hash.hpp>
 #include <openssl/ssl.h>
 #include "pcapplusplus/IPv4Layer.h"
@@ -61,7 +62,7 @@ class Session {
         SessionFlow source_to_destination;
         SessionFlow destination_to_source;
         SessionState session_state;
-        uint8_t* data;
+        std::vector<uint8_t> data_buffer;
     public:
         Session(
             pcpp::IPv4Address firewall_interface_src_ip,
@@ -71,7 +72,7 @@ class Session {
             pcpp::IPv4Address destination_ip,
             uint16_t          destination_port
         );
-        ~Session() = default;
+        virtual ~Session() = default;
         static SessionFlowKey generateSessionFlowKey(
             pcpp::IPv4Address source_ip,
             uint16_t          source_port,
@@ -81,7 +82,6 @@ class Session {
         uint8_t* getData();
         uint8_t getDataLength();
         uint8_t appendData(uint8_t* new_data, uint8_t length);
-
 };
 
 

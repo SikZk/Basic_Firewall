@@ -7,6 +7,7 @@
 
 #include "../session/sessions/Session.h"
 #include <openssl/types.h>
+#include <openssl/ssl.h>
 
 class DecryptionManager {
     SSL_CTX* ctx_server; // Kontekst, gdy udajemy serwer (dla client_side)

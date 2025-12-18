@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_UTILS_H
 #define BASIC_FIREWALL_UTILS_H
 
+#include <vector>
 #include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/IPv4Layer.h"

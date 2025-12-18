@@ -5,6 +5,8 @@
 #ifndef BASIC_FIREWALL_URL_FILTERING_PROFILE_H
 #define BASIC_FIREWALL_URL_FILTERING_PROFILE_H
 #include "SecurityProfile.h"
+#include <unordered_set>
+#include <vector>
 
 class UrlFilteringProfile : public SecurityProfile {
     private:
@@ -12,7 +14,7 @@ class UrlFilteringProfile : public SecurityProfile {
 
     public:
         explicit UrlFilteringProfile(const std::vector<std::string>& domains_to_block);
-        Action scan(const DecryptionSession& session, pcpp::IPv4Layer ipv4_packet) override;
+        Action scan(const Session& session, pcpp::IPv4Layer ipv4_packet) override;
 };
 
 #endif //BASIC_FIREWALL_URL_FILTERING_PROFILE_H

@@ -21,7 +21,7 @@ class SecurityProfile {
     SecurityProfile();
 
 
-    virtual Action scan(const DecryptionSession&, pcpp::IPv4Layer ipv4_packet) = 0;
+    virtual Action scan(const Session&, pcpp::IPv4Layer ipv4_packet) = 0;
 };
 
 #endif

@@ -7,6 +7,10 @@
 
 
 #include <string>
+#include <openssl/x509.h>
+#include <openssl/evp.h>
+#include "../session/sessions/Session.h"
+#include <pcapplusplus/IPv4Layer.h>
 
 
 class DecryptionProfile {

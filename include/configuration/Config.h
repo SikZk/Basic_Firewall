@@ -2,6 +2,8 @@
 #define BASIC_FIREWALL_CONFIG_H
 #include <vector>
 #include <boost/json/src.hpp>
+#include <pcapplusplus/PcapLiveDeviceList.h>
+#include <pcapplusplus/PcapLiveDevice.h>
 #include "../policies/SecurityPolicy.h"
 #include "../policies/NatPolicy.h"
 #include "../decryption/DecryptionProfile.h"
@@ -16,6 +18,7 @@ class Config {
         std::vector<std::string> malware_hashes;
         RoutingTable routing_table;
         std::pmr::string configuration_file_path;
+        std::vector<pcpp::PcapLiveDevice*> capture_interfaces;
 
         Config(std::pmr::string file_path)
             : configuration_file_path(std::move(file_path)) {};

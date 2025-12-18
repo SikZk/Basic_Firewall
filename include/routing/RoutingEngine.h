@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_ROUTINGENGINE_H
 #define BASIC_FIREWALL_ROUTINGENGINE_H
 #include <pcapplusplus/IPv4Layer.h>
+#include <vector>
 
 #include "RoutingTable.h"
 

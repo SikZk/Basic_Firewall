@@ -5,6 +5,9 @@
 #ifndef BASIC_FIREWALL_NATSESSIONTABLE_H
 #define BASIC_FIREWALL_NATSESSIONTABLE_H
 #include <boost/unordered/unordered_map_fwd.hpp>
+#include <boost/unordered_map.hpp>
+#include <optional>
+#include <vector>
 
 #include "./SessionTable.h"
 #include "../sessions/NatSession.h"
@@ -17,6 +20,9 @@ class NatSessionTable : public SessionTable{
     public:
 
         Session& createSession(SessionFlowKey const& key, NatSession session);
+        Session* findSession(SessionFlowKey const& key);
+        void eraseSession(SessionFlowKey const& key);
+        bool doesSessionExist(const SessionFlowKey& key) const;
 };
 
 class PortPool {

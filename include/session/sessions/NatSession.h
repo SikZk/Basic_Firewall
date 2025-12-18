@@ -12,6 +12,10 @@
 
 class NatSession : public Session {
 public:
+    pcpp::IPv4Address nat_ip;
+    uint16_t nat_port;
+    bool is_source_nat;
+
     NatSession(
         pcpp::IPv4Address firewall_interface_ip,
         pcpp::IPv4Address source_ip,

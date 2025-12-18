@@ -6,6 +6,7 @@
 #include "pcapplusplus/IPv4Layer.h"
 #include <cstdio>
 #include <csignal>
+#include <memory>
 #include <thread>
 #include <chrono>
 #include "../include/configuration/Config.h"
@@ -71,12 +72,13 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         session,
         configuration.nat_policies
     );
-    std::vector<SecurityProfile> security_profiles_to_apply = security_policy.evaluate_security_profiles(*ipLayerPacket);
+    std::vector<std::shared_ptr<SecurityProfile>> security_profiles_to_apply = security_policy.evaluate_security_profiles(*ipLayerPacket);
 
     Action action = ALLOW;
     if (isNotEncryptedSession(session)) {
-        for (SecurityProfile profile : security_profiles_to_apply) {
-            action = profile.scan(session, *ipLayerPacket);
+        for (auto const& profile : security_profiles_to_apply) {
+            if (!profile) continue;
+            action = profile->scan(*session, *ipLayerPacket);
         }
     } else if (decryption_profile.shouldDecrypt()) {
         DecryptionSession decryption_session = createOrGetDecryptionSession(
@@ -87,9 +89,9 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         );
         decryptionManager.decrypt_and_enhance_session(decryption_session);
 
-        // TODO somehow fix this iteration, its not working because SecurityProfile is abstract class, not sure how to work around that (uzyj shared ptra!!)
-        for (SecurityProfile profile : security_profiles_to_apply) {
-            action = profile.scan(decryption_session, *ipLayerPacket);
+        for (auto const& profile : security_profiles_to_apply) {
+            if (!profile) continue;
+            action = profile->scan(decryption_session, *ipLayerPacket);
         }
     }
 
