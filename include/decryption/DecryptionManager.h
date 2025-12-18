@@ -8,10 +8,11 @@
 #include "../session/sessions/Session.h"
 #include <openssl/types.h>
 #include <openssl/ssl.h>
+#include <pcapplusplus/Packet.h>
 
 class DecryptionManager {
-    SSL_CTX* ctx_server; // Kontekst, gdy udajemy serwer (dla client_side)
-    SSL_CTX* ctx_client; // Kontekst, gdy jesteśmy klientem (dla server_side)
+    ::SSL_CTX* ctx_server; // Kontekst, gdy udajemy serwer (dla client_side)
+    ::SSL_CTX* ctx_client; // Kontekst, gdy jesteśmy klientem (dla server_side)
 
 public:
     DecryptionManager();
@@ -23,7 +24,7 @@ public:
 
 private:
     // Generowanie fałszywego certyfikatu w locie (na podstawie SNI prawdziwego serwera)
-    SSL* createForgedServerSSL(const std::string& serverName);
+    ::SSL* createForgedServerSSL(const std::string& serverName);
 };
 
 #endif //BASIC_FIREWALL_DECRYPTIONMANAGER_H

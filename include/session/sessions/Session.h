@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_SESSION_H
 #define BASIC_FIREWALL_SESSION_H
 #include <vector>
+#include <cstdint>
 #include <boost/container_hash/hash.hpp>
 #include <openssl/ssl.h>
 #include "pcapplusplus/IPv4Layer.h"
@@ -80,7 +81,8 @@ class Session {
             uint16_t          destination_port
         );
         uint8_t* getData();
-        uint8_t getDataLength();
+        const uint8_t* getData() const;
+        uint8_t getDataLength() const;
         uint8_t appendData(uint8_t* new_data, uint8_t length);
 };
 

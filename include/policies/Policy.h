@@ -4,6 +4,9 @@
 
 #ifndef BASIC_FIREWALL_POLICY_H
 #define BASIC_FIREWALL_POLICY_H
+#include <cstdint>
+#include <string>
+#include <memory_resource>
 #include <pcapplusplus/IpAddress.h>
 
 class Policy {

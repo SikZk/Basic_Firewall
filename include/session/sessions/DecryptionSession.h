@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_DECRYPTIONSESSION_H
 #define BASIC_FIREWALL_DECRYPTIONSESSION_H
 #include <cstdint>
+#include <vector>
 #include <openssl/types.h>
 #include <pcapplusplus/IpAddress.h>
 #include "Session.h"

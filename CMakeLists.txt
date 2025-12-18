@@ -15,7 +15,24 @@ add_executable(Basic_Firewall src/main.cpp
         include/configuration/Config.h
         include/policies/Policy.h
         src/utils.cpp
-        src/implementations.cpp)
+        src/config/Config.cpp
+        src/policies/Policy.cpp
+        src/policies/SecurityPolicy.cpp
+        src/policies/NatPolicy.cpp
+        src/policies/NatService.cpp
+        src/security_profiles/DlpProfile.cpp
+        src/security_profiles/AntimalwareProfile.cpp
+        src/security_profiles/UrlFilteringProfile.cpp
+        src/decryption/DecryptionProfile.cpp
+        src/decryption/DecryptionManager.cpp
+        src/routing/RoutingTable.cpp
+        src/routing/RoutingEngine.cpp
+        src/session/Session.cpp
+        src/session/DecryptionSession.cpp
+        src/session/NatSession.cpp
+        src/session/session_tables/SessionTable.cpp
+        src/session/session_tables/DecryptionSessionTable.cpp
+        src/session/session_tables/NatSessionTable.cpp)
 
 target_include_directories(Basic_Firewall PRIVATE
         /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/include

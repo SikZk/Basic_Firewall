@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <pcapplusplus/IpAddress.h>
+#include <iostream>
 struct RouteEntry {
     pcpp::IPv4Address network;
     pcpp::IPv4Address netmask;
