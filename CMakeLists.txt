@@ -9,6 +9,7 @@ add_executable(Basic_Firewall src/main.cpp
         include/security_profiles/UrlFilteringProfile.h
         include/security_profiles/AntimalwareProfile.h
         include/security_profiles/DlpProfile.h
+        include/security_profiles/SecurityProfile.h
         include/decryption/DecryptionProfile.h
         include/session/sessions/Session.h
         include/routing/RoutingTable.h
@@ -23,6 +24,7 @@ add_executable(Basic_Firewall src/main.cpp
         src/security_profiles/DlpProfile.cpp
         src/security_profiles/AntimalwareProfile.cpp
         src/security_profiles/UrlFilteringProfile.cpp
+        src/security_profiles/SecurityProfile.cpp
         src/decryption/DecryptionProfile.cpp
         src/decryption/DecryptionManager.cpp
         src/routing/RoutingTable.cpp
@@ -42,4 +44,6 @@ target_link_directories(Basic_Firewall PRIVATE
 )
 target_link_libraries(Basic_Firewall PRIVATE
         Pcap++ Packet++ Common++ pcap pthread
+        boost_json
+        ssl crypto
 )
