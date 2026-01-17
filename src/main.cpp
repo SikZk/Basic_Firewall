@@ -19,7 +19,7 @@
 #include "utils.h"
 #include "../include/configuration/Config.h"
 #include "../include/routing/RoutingEngine.h"
-#include "../include/policies/NatService.h"
+
 
 using namespace pcpp;
 
@@ -29,9 +29,6 @@ static Config configuration("../resources/config.json");
 static RoutingEngine routingEngine;
 static std::vector<PcapLiveDevice*> gInterfaces;
 
-static NatSessionTable natSessionTable;
-static SessionTable sessionTable;
-NatService natService;
 
 static void exitProgram(int)
 {
@@ -47,37 +44,20 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 {
     if (!rawPacket || !inDev)
         return;
-
     Packet packet(rawPacket);
 
     // Need Ethernet for L2 forwarding
     IPv4Layer* ipLayerPacket = packet.getLayerOfType<IPv4Layer>();
-    TcpLayer* tcpLayerPacket = packet.getLayerOfType<TcpLayer>();
-
-    auto security_policy = matchBasedOnObject<IPv4Layer, SecurityPolicy>(
-        ipLayerPacket,
-        configuration.security_policies
-    );
-    if (!security_policy.getAllowPacket()) return;
-    SessionFlowKey key = getSessionFlowKey(ipLayerPacket, tcpLayerPacket);
-
-    Session* session = createOrGetSession(
-     sessionTable,
-        key,
-        ipLayerPacket,
-        tcpLayerPacket,
-        inDev
-    );
 
 
-    auto nat_policy = matchBasedOnObject<Session, NatPolicy >(
-        session,
-        configuration.nat_policies
-    );
+
     auto* eth = packet.getLayerOfType<EthLayer>();
     if (!eth)
         return;
 
+    const MacAddress dstMac = eth->getDestMac();
+    if (dstMac != inDev->getMacAddress() && dstMac != MacAddress::Broadcast)
+        return;
     // If we ever still see our injected frames, ignore
     if (eth->getSourceMac() == inDev->getMacAddress())
         return;
@@ -96,14 +76,6 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     if (!packet.isPacketOfType(IPv4))
         return;
 
-
-    NatSession nat_session = createOrGetNatSession(
-        natSessionTable,
-        key,
-        session,
-        nat_policy
-    );
-    IPv4Layer* translated_packet = natService.applyNat(nat_session, ipLayerPacket);
 
     routingEngine.routePacket(packet, inDev);
 }
