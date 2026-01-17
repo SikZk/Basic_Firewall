@@ -6,6 +6,7 @@
 #define BASIC_FIREWALL_DECRYPTIONMANAGER_H
 
 #include "../session/sessions/Session.h"
+#include "../session/sessions/DecryptionSession.h"
 #include <openssl/types.h>
 
 class DecryptionManager {
@@ -18,7 +19,7 @@ public:
 
     // glowna logika, deszyfracja, szyfracja, ogarniecie czy pakiet jest client-side czy server-side
     bool processPacket(Session* session, pcpp::Packet& packet, std::vector<pcpp::Packet>& outPackets);
-    void decrypt_and_enhance_session(DecryptionSession decryption_session);
+    void decrypt_and_enhance_session(DecryptionSession& decryption_session);
 
 private:
     // Generowanie fałszywego certyfikatu w locie (na podstawie SNI prawdziwego serwera)

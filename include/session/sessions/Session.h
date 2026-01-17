@@ -82,8 +82,7 @@ class Session {
         );
         uint8_t* getData();
         uint8_t getDataLength();
-        uint8_t appendData(uint8_t* new_data, uint8_t length);
-
+        void appendData(const uint8_t* new_data, size_t length);
 };
 
 
