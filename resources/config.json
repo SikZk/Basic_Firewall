@@ -1,5 +1,6 @@
 {
   "interfaces": {
+      "port1": "ens34",
       "port2": "ens37",
       "port3": "ens38"
   },
@@ -30,10 +31,10 @@
         "mask": 24
       },
       "to": {
-        "network": "0.0.0.0",
-        "mask": 0
+        "network": "192.168.1.0",
+        "mask": 24
       },
-      "translated_source_ip": "10.2.0.1",
+      "translated_source_ip": "192.168.1.29",
       "source_nat": true
     }
   ]
