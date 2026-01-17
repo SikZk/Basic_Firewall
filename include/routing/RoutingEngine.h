@@ -13,6 +13,7 @@
 
 // Adjust these includes to your project layout:
 #include "../routing/RoutingTable.h"   // must define RoutingTable and RouteEntry
+#include "../session/session_tables/NatSessionTable.h"
 
 class RoutingEngine
 {
@@ -43,6 +44,7 @@ private:
     static RoutingTable routing_table;
 
     static constexpr auto ArpTtl = std::chrono::minutes(5);
+    NatState nat_state{10000, 20000};
 
     pcpp::PcapLiveDevice* findInterfaceByName(const std::string& name) const;
 

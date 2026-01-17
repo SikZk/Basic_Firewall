@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_NATSESSIONTABLE_H
 #define BASIC_FIREWALL_NATSESSIONTABLE_H
 #include <optional>
+#include <unordered_map>
 #include <boost/unordered/unordered_map_fwd.hpp>
 
 #include "./SessionTable.h"
@@ -45,10 +46,12 @@ class NatState {
 public:
     NatSessionTable  table;
     PortPool  ports;
+    std::unordered_map<SessionFlowKey, SessionFlowKey, SessionKeyHash, SessionKeyEq> reverse_map;
 
     NatState(uint16_t port_start, uint16_t port_end)
         : ports(port_start, port_end) {}
     NatSession* getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Address external_ip);
+    NatSession* findByTranslatedKey(const SessionFlowKey& key);
     void removeSession(const SessionFlowKey& key);
 };
 

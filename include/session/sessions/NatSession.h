@@ -22,7 +22,14 @@ public:
         uint16_t nat_port,
         bool is_source_nat
     );
+    pcpp::IPv4Address getNatIp() const;
+    uint16_t getNatPort() const;
+    bool isSourceNat() const;
     ~NatSession() = default;
+private:
+    pcpp::IPv4Address nat_ip;
+    uint16_t nat_port{0};
+    bool is_source_nat{false};
 };
 
 #endif //BASIC_FIREWALL_NATSESSION_H

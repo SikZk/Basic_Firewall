@@ -4,13 +4,182 @@
 #include <iostream>
 #include <cstring>
 #include <unordered_set>
+#include <netinet/in.h>
 
 #include "pcapplusplus/EthLayer.h"
 #include "pcapplusplus/ArpLayer.h"
+#include "pcapplusplus/TcpLayer.h"
+#include "pcapplusplus/UdpLayer.h"
 #include "pcapplusplus/SystemUtils.h"
 
 RoutingEngine::RoutingEngine() = default;
 static std::unordered_set<uint64_t> myMacAddresses;
+
+namespace {
+struct IcmpEchoHeader {
+    uint8_t type;
+    uint8_t code;
+    uint16_t checksum;
+    uint16_t identifier;
+    uint16_t sequence;
+};
+
+bool matchesNetwork(const pcpp::IPv4Address& address, const pcpp::IPv4Address& network, uint32_t maskBits)
+{
+    if (maskBits == 0) {
+        return true;
+    }
+    uint32_t mask = maskBits >= 32 ? 0xFFFFFFFFu : (0xFFFFFFFFu << (32 - maskBits));
+    return (address.toInt() & mask) == (network.toInt() & mask);
+}
+
+bool isInternalAddress(const pcpp::IPv4Address& address)
+{
+    return matchesNetwork(address, pcpp::IPv4Address("10.0.0.0"), 8);
+}
+
+uint16_t computeChecksum(const uint8_t* data, size_t len)
+{
+    uint32_t sum = 0;
+    const uint16_t* ptr = reinterpret_cast<const uint16_t*>(data);
+    while (len > 1) {
+        sum += *ptr++;
+        len -= 2;
+    }
+    if (len > 0) {
+        sum += static_cast<uint16_t>(*(reinterpret_cast<const uint8_t*>(ptr)) << 8);
+    }
+    while (sum >> 16) {
+        sum = (sum & 0xFFFF) + (sum >> 16);
+    }
+    return static_cast<uint16_t>(~sum);
+}
+
+bool getIcmpEchoFields(pcpp::IPv4Layer* ipLayer, uint16_t& identifier, uint16_t& sequence)
+{
+    if (!ipLayer) {
+        return false;
+    }
+    uint8_t* payload = ipLayer->getLayerPayload();
+    size_t payload_len = ipLayer->getLayerPayloadSize();
+    if (!payload || payload_len < sizeof(IcmpEchoHeader)) {
+        return false;
+    }
+    auto* hdr = reinterpret_cast<IcmpEchoHeader*>(payload);
+    if (hdr->type != 0 && hdr->type != 8) {
+        return false;
+    }
+    identifier = ntohs(hdr->identifier);
+    sequence = ntohs(hdr->sequence);
+    return true;
+}
+
+void setIcmpEchoFields(pcpp::IPv4Layer* ipLayer, uint16_t identifier, uint16_t sequence)
+{
+    if (!ipLayer) {
+        return;
+    }
+    uint8_t* payload = ipLayer->getLayerPayload();
+    size_t payload_len = ipLayer->getLayerPayloadSize();
+    if (!payload || payload_len < sizeof(IcmpEchoHeader)) {
+        return;
+    }
+    auto* hdr = reinterpret_cast<IcmpEchoHeader*>(payload);
+    if (hdr->type != 0 && hdr->type != 8) {
+        return;
+    }
+    hdr->identifier = htons(identifier);
+    hdr->sequence = htons(sequence);
+    hdr->checksum = 0;
+    hdr->checksum = htons(computeChecksum(payload, payload_len));
+}
+
+struct TransportInfo {
+    pcpp::ProtocolType protocol{pcpp::UnknownProtocol};
+    uint16_t src_port{0};
+    uint16_t dst_port{0};
+    bool is_icmp{false};
+};
+
+bool getTransportInfo(pcpp::Packet& packet, pcpp::IPv4Layer* ipLayer, TransportInfo& info)
+{
+    if (!ipLayer) {
+        return false;
+    }
+    const uint8_t proto = ipLayer->getIPv4Header()->protocol;
+    if (proto == IPPROTO_TCP) {
+        auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>();
+        if (!tcp) {
+            return false;
+        }
+        info.protocol = pcpp::TCP;
+        info.src_port = ntohs(tcp->getTcpHeader()->portSrc);
+        info.dst_port = ntohs(tcp->getTcpHeader()->portDst);
+        return true;
+    }
+    if (proto == IPPROTO_UDP) {
+        auto* udp = packet.getLayerOfType<pcpp::UdpLayer>();
+        if (!udp) {
+            return false;
+        }
+        info.protocol = pcpp::UDP;
+        info.src_port = ntohs(udp->getUdpHeader()->portSrc);
+        info.dst_port = ntohs(udp->getUdpHeader()->portDst);
+        return true;
+    }
+    if (proto == IPPROTO_ICMP) {
+        uint16_t identifier = 0;
+        uint16_t sequence = 0;
+        if (!getIcmpEchoFields(ipLayer, identifier, sequence)) {
+            return false;
+        }
+        info.protocol = pcpp::ICMP;
+        info.src_port = identifier;
+        info.dst_port = sequence;
+        info.is_icmp = true;
+        return true;
+    }
+    return false;
+}
+
+void setTransportSourcePort(pcpp::Packet& packet, pcpp::IPv4Layer* ipLayer, const TransportInfo& info, uint16_t port)
+{
+    if (info.protocol == pcpp::TCP) {
+        if (auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>()) {
+            tcp->getTcpHeader()->portSrc = htons(port);
+        }
+        return;
+    }
+    if (info.protocol == pcpp::UDP) {
+        if (auto* udp = packet.getLayerOfType<pcpp::UdpLayer>()) {
+            udp->getUdpHeader()->portSrc = htons(port);
+        }
+        return;
+    }
+    if (info.protocol == pcpp::ICMP) {
+        setIcmpEchoFields(ipLayer, port, info.dst_port);
+    }
+}
+
+void setTransportDestinationPort(pcpp::Packet& packet, pcpp::IPv4Layer* ipLayer, const TransportInfo& info, uint16_t port)
+{
+    if (info.protocol == pcpp::TCP) {
+        if (auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>()) {
+            tcp->getTcpHeader()->portDst = htons(port);
+        }
+        return;
+    }
+    if (info.protocol == pcpp::UDP) {
+        if (auto* udp = packet.getLayerOfType<pcpp::UdpLayer>()) {
+            udp->getUdpHeader()->portDst = htons(port);
+        }
+        return;
+    }
+    if (info.protocol == pcpp::ICMP) {
+        setIcmpEchoFields(ipLayer, port, info.dst_port);
+    }
+}
+} // namespace
 
 void RoutingEngine::loadInterfaces(std::vector<pcpp::PcapLiveDevice*> ifs) {
     interfaces = std::move(ifs);
@@ -185,6 +354,31 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
         learnArp(inInterface->getName(), ip->getSrcIPv4Address(), eth->getSourceMac());
     }
 
+    const pcpp::IPv4Address original_src = ip->getSrcIPv4Address();
+    const pcpp::IPv4Address original_dst = ip->getDstIPv4Address();
+
+    TransportInfo transport;
+    const bool has_transport = getTransportInfo(packet, ip, transport);
+
+    if (has_transport) {
+        SessionFlowKey translated_key{
+            ip->getSrcIPv4Address(),
+            transport.src_port,
+            ip->getDstIPv4Address(),
+            transport.dst_port,
+            transport.protocol
+        };
+        if (auto* nat_session = nat_state.findByTranslatedKey(translated_key)) {
+            ip->setDstIPv4Address(nat_session->getSourceToDestinationFlow().internal_ip);
+            setTransportDestinationPort(
+                packet,
+                ip,
+                transport,
+                nat_session->getSourceToDestinationFlow().internal_port
+            );
+        }
+    }
+
     const pcpp::IPv4Address dst = ip->getDstIPv4Address();
     auto route = routing_table.findRoute(dst);
 
@@ -196,6 +390,20 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     auto* iphdr = ip->getIPv4Header();
     if (iphdr->timeToLive <= 1) return;
     iphdr->timeToLive -= 1;
+
+    if (has_transport && isInternalAddress(original_src) && !isInternalAddress(original_dst)) {
+        SessionFlowKey outbound_key{
+            original_src,
+            transport.src_port,
+            original_dst,
+            transport.dst_port,
+            transport.protocol
+        };
+        if (auto* nat_session = nat_state.getOrCreateSession(outbound_key, outInterface->getIPv4Address())) {
+            ip->setSrcIPv4Address(nat_session->getNatIp());
+            setTransportSourcePort(packet, ip, transport, nat_session->getNatPort());
+        }
+    }
 
     const pcpp::IPv4Address nextHop = dst;
     const std::string outIfName = outInterface->getName();

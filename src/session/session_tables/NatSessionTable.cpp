@@ -58,7 +58,6 @@ void PortPool::release_port(uint16_t port)
 
 NatSession* NatState::getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Address external_ip)
 {
-    (void)external_ip;
     auto* existing = static_cast<NatSession*>(table.findSession(key));
     if (existing) {
         return existing;
@@ -66,10 +65,32 @@ NatSession* NatState::getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Ad
     auto port = ports.acquire_free_port_number().value_or(0);
     NatSession session(external_ip, key.src_ip, key.src_port, key.dst_ip, key.dst_port, external_ip, port, true);
     auto& stored = table.createSession(key, std::move(session));
+    SessionFlowKey reverse_key{key.dst_ip, key.dst_port, external_ip, port, key.protocol};
+    reverse_map.emplace(reverse_key, key);
     return static_cast<NatSession*>(&stored);
+}
+
+NatSession* NatState::findByTranslatedKey(const SessionFlowKey& key)
+{
+    auto it = reverse_map.find(key);
+    if (it == reverse_map.end()) {
+        return nullptr;
+    }
+    return static_cast<NatSession*>(table.findSession(it->second));
 }
 
 void NatState::removeSession(const SessionFlowKey& key)
 {
+    if (auto* session = static_cast<NatSession*>(table.findSession(key))) {
+        SessionFlowKey reverse_key{
+            session->getSourceToDestinationFlow().external_ip,
+            session->getSourceToDestinationFlow().external_port,
+            session->getNatIp(),
+            session->getNatPort(),
+            key.protocol
+        };
+        reverse_map.erase(reverse_key);
+        ports.release_port(session->getNatPort());
+    }
     table.eraseSession(key);
 }
