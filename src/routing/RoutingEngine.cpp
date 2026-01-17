@@ -6,6 +6,7 @@
 #include <optional>
 #include <sstream>
 #include <thread>
+#include <unordered_map>
 #include "pcapplusplus/ArpLayer.h"
 #include "pcapplusplus/EthLayer.h"
 #include "pcapplusplus/MacAddress.h"
@@ -13,12 +14,25 @@
 #include "pcapplusplus/PcapLiveDevice.h"
 
 namespace {
-std::optional<pcpp::MacAddress> lookupArpCache(const pcpp::IPv4Address& ip)
+struct ArpCacheState {
+    std::unordered_map<std::string, pcpp::MacAddress> entries;
+    std::chrono::steady_clock::time_point lastRefresh = std::chrono::steady_clock::time_point::min();
+};
+
+ArpCacheState& getArpCacheState()
 {
+    static ArpCacheState state;
+    return state;
+}
+
+void refreshArpCache()
+{
+    auto& state = getArpCacheState();
     std::ifstream arpFile("/proc/net/arp");
     if (!arpFile.is_open()) {
-        return std::nullopt;
+        return;
     }
+    std::unordered_map<std::string, pcpp::MacAddress> nextEntries;
     std::string line;
     std::getline(arpFile, line);
     while (std::getline(arpFile, line)) {
@@ -32,11 +46,24 @@ std::optional<pcpp::MacAddress> lookupArpCache(const pcpp::IPv4Address& ip)
         if (!(stream >> ipAddress >> hwType >> flags >> hwAddress >> mask >> device)) {
             continue;
         }
-        if (ipAddress == ip.toString()) {
-            return pcpp::MacAddress(hwAddress);
-        }
+        nextEntries.emplace(ipAddress, pcpp::MacAddress(hwAddress));
     }
-    return std::nullopt;
+    state.entries = std::move(nextEntries);
+    state.lastRefresh = std::chrono::steady_clock::now();
+}
+
+std::optional<pcpp::MacAddress> lookupArpCache(const pcpp::IPv4Address& ip)
+{
+    auto& state = getArpCacheState();
+    auto now = std::chrono::steady_clock::now();
+    if (now - state.lastRefresh > std::chrono::milliseconds(250)) {
+        refreshArpCache();
+    }
+    auto it = state.entries.find(ip.toString());
+    if (it == state.entries.end()) {
+        return std::nullopt;
+    }
+    return it->second;
 }
 
 bool sendArpRequest(pcpp::PcapLiveDevice* device, const pcpp::IPv4Address& targetIp)
