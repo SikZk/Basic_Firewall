@@ -4,10 +4,18 @@
 #include <iostream>
 #include <cstring>
 #include <unordered_set>
+#include <arpa/inet.h>
 
 #include "pcapplusplus/EthLayer.h"
 #include "pcapplusplus/ArpLayer.h"
 #include "pcapplusplus/SystemUtils.h"
+#include "pcapplusplus/TcpLayer.h"
+
+#include "../../include/policies/NatService.h"
+#include "../../include/session/session_tables/NatSessionTable.h"
+#include "../../include/session/sessions/NatSession.h"
+#include "../../include/session/sessions/Session.h"
+#include "../utils.h"
 
 RoutingEngine::RoutingEngine() = default;
 static std::unordered_set<uint64_t> myMacAddresses;
@@ -165,11 +173,18 @@ void RoutingEngine::processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice*
     flushPending(ifName, arp->getSenderIpAddr(), arp->getSenderMacAddress());
 }
 
-void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table)
+void RoutingEngine::routePacket(
+    pcpp::Packet& packet,
+    pcpp::PcapLiveDevice* inInterface,
+    RoutingTable& routing_table,
+    const std::vector<NatPolicy>& nat_policies
+)
 {
     auto* eth = packet.getLayerOfType<pcpp::EthLayer>();
     auto* ip  = packet.getLayerOfType<pcpp::IPv4Layer>();
     if (!eth || !ip) return;
+
+    auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>();
 
 
     uint64_t srcMacVal = 0;
@@ -183,6 +198,57 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
 
     if (inInterface) {
         learnArp(inInterface->getName(), ip->getSrcIPv4Address(), eth->getSourceMac());
+    }
+
+    if (tcp) {
+        SessionFlowKey key = getSessionFlowKey(ip, tcp);
+        SessionFlowKey reverse_key = Session::generateSessionFlowKey(
+            ip->getDstIPv4Address(),
+            ntohs(tcp->getTcpHeader()->portDst),
+            ip->getSrcIPv4Address(),
+            ntohs(tcp->getTcpHeader()->portSrc)
+        );
+
+        if (inInterface && !session_table.findSession(key) && !session_table.findSession(reverse_key)) {
+            Session session(
+                inInterface->getIPv4Address(),
+                inInterface->getIPv4Address(),
+                ip->getSrcIPv4Address(),
+                ntohs(tcp->getTcpHeader()->portSrc),
+                ip->getDstIPv4Address(),
+                ntohs(tcp->getTcpHeader()->portDst)
+            );
+            session_table.createSession(key, std::move(session));
+        }
+
+        NatState& nat_state = NatPolicy::getNatState();
+        auto* nat_session = static_cast<NatSession*>(nat_state.table.findSession(key));
+        if (!nat_session) {
+            nat_session = static_cast<NatSession*>(nat_state.table.findSession(reverse_key));
+        }
+
+        if (nat_session) {
+            nat_service.applyNat(*nat_session, ip, tcp);
+        } else {
+            const NatPolicy* matched_policy = nullptr;
+            for (const auto& policy : nat_policies) {
+                if (policy.does_match_policy(*ip)) {
+                    matched_policy = &policy;
+                    break;
+                }
+            }
+
+            if (matched_policy) {
+                auto route = routing_table.findRoute(ip->getDstIPv4Address());
+                if (route.has_value()) {
+                    pcpp::PcapLiveDevice* outInterface = findInterfaceByName(route->interfaceName);
+                    if (outInterface) {
+                        nat_session = nat_state.getOrCreateSession(key, outInterface->getIPv4Address());
+                        nat_service.applyNat(*nat_session, ip, tcp);
+                    }
+                }
+            }
+        }
     }
 
     const pcpp::IPv4Address dst = ip->getDstIPv4Address();

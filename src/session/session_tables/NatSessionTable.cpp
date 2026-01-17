@@ -58,7 +58,6 @@ void PortPool::release_port(uint16_t port)
 
 NatSession* NatState::getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Address external_ip)
 {
-    (void)external_ip;
     auto* existing = static_cast<NatSession*>(table.findSession(key));
     if (existing) {
         return existing;
@@ -66,6 +65,8 @@ NatSession* NatState::getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Ad
     auto port = ports.acquire_free_port_number().value_or(0);
     NatSession session(external_ip, key.src_ip, key.src_port, key.dst_ip, key.dst_port, external_ip, port, true);
     auto& stored = table.createSession(key, std::move(session));
+    SessionFlowKey reverse_key{key.dst_ip, key.dst_port, external_ip, port, key.protocol};
+    table.createSession(reverse_key, static_cast<NatSession&>(stored));
     return static_cast<NatSession*>(&stored);
 }
 

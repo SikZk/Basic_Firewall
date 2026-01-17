@@ -37,6 +37,7 @@ class NatPolicy : public Policy {
         )
         { };
         static void configureNatState(uint16_t port_start, uint16_t port_end);
+        static NatState& getNatState();
 
         pcpp::IPv4Layer applyNat(pcpp::IPv4Layer* ipLayer);
 

@@ -1,6 +1,6 @@
 {
   "interfaces": {
-
+      "port1": "ens34",
       "port2": "ens37",
       "port3": "ens38"
   },
@@ -22,6 +22,20 @@
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
       "interface": "ens34"
+    }
+  ],
+  "nat_port_pool": {
+    "start": 10000,
+    "end": 20000
+  },
+  "nat_policies": [
+    {
+      "from": "10.1.0.0",
+      "from_mask": 24,
+      "to": "192.168.1.0",
+      "to_mask": 24,
+      "src_port": 0,
+      "dst_port": 0
     }
   ]
 }

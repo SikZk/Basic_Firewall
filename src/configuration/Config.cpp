@@ -35,14 +35,7 @@ void Config::load()
     }
 
     if (nat_policies.empty()) {
-        nat_policies.emplace_back(
-            "0.0.0.0",
-            0,
-            "0.0.0.0",
-            0,
-            0,
-            0
-        );
+        std::cout << "[Config] No NAT policies configured." << std::endl;
     }
 }
 
@@ -70,8 +63,33 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
 };
 void Config::parseNatPolicy(const boost::json::value& object)
 {
-    (void)object;
-    std::cout << "[Config] Skipping NAT policy parsing (no-op)." << std::endl;
+    if (!object.is_array()) {
+        return;
+    }
+    nat_policies.clear();
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) {
+            continue;
+        }
+        const auto& obj = entry.as_object();
+        if (!obj.contains("from") || !obj.contains("to")) {
+            continue;
+        }
+        auto network_from = std::string(obj.at("from").as_string());
+        auto network_to = std::string(obj.at("to").as_string());
+        uint32_t from_mask = obj.contains("from_mask") ? static_cast<uint32_t>(obj.at("from_mask").to_number<int64_t>()) : 0;
+        uint32_t to_mask = obj.contains("to_mask") ? static_cast<uint32_t>(obj.at("to_mask").to_number<int64_t>()) : 0;
+        uint16_t src_port = obj.contains("src_port") ? static_cast<uint16_t>(obj.at("src_port").to_number<int64_t>()) : 0;
+        uint16_t dst_port = obj.contains("dst_port") ? static_cast<uint16_t>(obj.at("dst_port").to_number<int64_t>()) : 0;
+        nat_policies.emplace_back(
+            std::move(network_from),
+            from_mask,
+            std::move(network_to),
+            to_mask,
+            src_port,
+            dst_port
+        );
+    }
 };
 void Config::parseRoutingTable(const boost::json::value& object)
 {
@@ -115,6 +133,20 @@ void Config::loadFromFile(const std::string& filepath)
     }
     if (obj.contains("routes")) {
         parseRoutingTable(obj.at("routes"));
+    }
+    if (obj.contains("nat_policies")) {
+        parseNatPolicy(obj.at("nat_policies"));
+    }
+    if (obj.contains("nat_port_pool")) {
+        const auto& pool = obj.at("nat_port_pool");
+        if (pool.is_object()) {
+            const auto& pool_obj = pool.as_object();
+            if (pool_obj.contains("start") && pool_obj.contains("end")) {
+                uint16_t start = static_cast<uint16_t>(pool_obj.at("start").to_number<int64_t>());
+                uint16_t end = static_cast<uint16_t>(pool_obj.at("end").to_number<int64_t>());
+                NatPolicy::configureNatState(start, end);
+            }
+        }
     }
 };
 void Config::parseInterfaces(const boost::json::value& object)

@@ -17,9 +17,24 @@ NatSession::NatSession(
         source_port,
         destination_ip,
         destination_port
-    )
+    ),
+    nat_ip(nat_ip),
+    nat_port(nat_port),
+    is_source_nat(is_source_nat)
 {
-    (void)nat_ip;
-    (void)nat_port;
-    (void)is_source_nat;
+}
+
+const pcpp::IPv4Address& NatSession::getNatIp() const
+{
+    return nat_ip;
+}
+
+uint16_t NatSession::getNatPort() const
+{
+    return nat_port;
+}
+
+bool NatSession::isSourceNat() const
+{
+    return is_source_nat;
 }

@@ -13,6 +13,9 @@
 
 // Adjust these includes to your project layout:
 #include "../routing/RoutingTable.h"   // must define RoutingTable and RouteEntry
+#include "../policies/NatPolicy.h"
+#include "../policies/NatService.h"
+#include "../session/session_tables/SessionTable.h"
 
 class RoutingEngine
 {
@@ -24,7 +27,12 @@ public:
 
     // Called from capture callback:
     void processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface);
-    void routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table);
+    void routePacket(
+        pcpp::Packet& packet,
+        pcpp::PcapLiveDevice* inInterface,
+        RoutingTable& routing_table,
+        const std::vector<NatPolicy>& nat_policies
+    );
 
 private:
     struct ArpEntry
@@ -41,6 +49,8 @@ private:
 
     std::vector<pcpp::PcapLiveDevice*> interfaces;
     static RoutingTable routing_table;
+    SessionTable session_table;
+    NatService nat_service;
 
     static constexpr auto ArpTtl = std::chrono::minutes(5);
 

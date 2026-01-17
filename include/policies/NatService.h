@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_NATSERVICE_H
 #define BASIC_FIREWALL_NATSERVICE_H
 #include <pcapplusplus/IPv4Layer.h>
+#include <pcapplusplus/TcpLayer.h>
 
 #include "../session/sessions/NatSession.h"
 #include "../session/sessions/Session.h"
@@ -12,7 +13,11 @@
 class NatService {
 
     public:
-        pcpp::IPv4Layer* applyNat(NatSession session, pcpp::IPv4Layer* ipLayerPacket);
+        pcpp::IPv4Layer* applyNat(
+            const NatSession& session,
+            pcpp::IPv4Layer* ipLayerPacket,
+            pcpp::TcpLayer* tcpLayerPacket
+        );
 };
 
 
