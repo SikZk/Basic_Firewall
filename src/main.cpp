@@ -15,6 +15,7 @@
 #include "../include/decryption/DecryptionManager.h"
 #include "../include/policies/NatService.h"
 #include "../include/routing/RoutingEngine.h"
+#include <iostream>
 
 using namespace pcpp;
 

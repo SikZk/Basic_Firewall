@@ -1,6 +1,7 @@
 #include "../../include/configuration/Config.h"
 #include <pcapplusplus/PcapLiveDeviceList.h>
 #include <fstream>
+#include <boost/json/src.hpp>
 #include <iostream>
 #include <sstream>
 
