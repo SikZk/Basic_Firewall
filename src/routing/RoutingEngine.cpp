@@ -94,7 +94,8 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::IPv4Layer* ipLayerPa
     }
 
     pcpp::PcapLiveDevice* outInterface = *it;
-    auto* ethLayer = packet.getLayerOfType<pcpp::EthLayer>();
+    pcpp::Packet packetCopy(packet);
+    auto* ethLayer = packetCopy.getLayerOfType<pcpp::EthLayer>();
     if (!ethLayer) {
         std::cout << "[Routing] Missing Ethernet layer." << std::endl;
         return;
@@ -117,9 +118,9 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::IPv4Layer* ipLayerPa
 
     ethLayer->setSourceMac(outInterface->getMacAddress());
     ethLayer->setDestMac(*nextHopMac);
-    packet.computeCalculateFields();
+    packetCopy.computeCalculateFields();
 
-    if (!outInterface->sendPacket(&packet)) {
+    if (!outInterface->sendPacket(&packetCopy)) {
         std::cout << "[Routing] Failed to send packet on " << route->interfaceName << std::endl;
         return;
     }
