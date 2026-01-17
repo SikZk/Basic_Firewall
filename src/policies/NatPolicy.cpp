@@ -1,5 +1,5 @@
 #include "../../include/policies/NatPolicy.h"
-#include <iostream>
+#include "../../include/logging/Logger.h"
 
 NatState NatPolicy::nat_state(10000, 20000);
 
@@ -15,7 +15,7 @@ NatState& NatPolicy::getNatState()
 
 pcpp::IPv4Layer NatPolicy::applyNat(pcpp::IPv4Layer* ipLayer)
 {
-    std::cout << "[NAT] No-op NAT applied." << std::endl;
+    firewall::logging::Logger::info("[NAT] No-op NAT applied.");
     return *ipLayer;
 }
 

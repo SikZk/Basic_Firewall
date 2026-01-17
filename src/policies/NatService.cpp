@@ -1,6 +1,6 @@
 #include "../../include/policies/NatService.h"
 #include <arpa/inet.h>
-#include <iostream>
+#include "../../include/logging/Logger.h"
 #include "pcapplusplus/TcpLayer.h"
 #include "pcapplusplus/UdpLayer.h"
 
@@ -63,10 +63,41 @@ pcpp::IPv4Layer* NatService::applyNat(const NatSession& session, pcpp::IPv4Layer
             }
             translated = true;
         }
+    } else {
+        if (src_ip == session.getExternalIp() && dst_ip == session.getNatIp()) {
+            ipLayerPacket->setDstIPv4Address(session.getInternalIp());
+            if (next_layer && next_layer->getProtocol() == pcpp::TCP) {
+                auto* tcpLayer = static_cast<pcpp::TcpLayer*>(next_layer);
+                tcpLayer->getTcpHeader()->portDst = htons(session.getInternalPort());
+            } else if (next_layer && next_layer->getProtocol() == pcpp::UDP) {
+                auto* udpLayer = static_cast<pcpp::UdpLayer*>(next_layer);
+                udpLayer->getUdpHeader()->portDst = htons(session.getInternalPort());
+            } else if (protocol == kIcmpProtocol) {
+                updateIcmpIdentifier(ipLayerPacket, session.getInternalPort());
+            }
+            translated = true;
+        } else if (src_ip == session.getInternalIp() && dst_ip == session.getExternalIp()) {
+            ipLayerPacket->setSrcIPv4Address(session.getNatIp());
+            if (next_layer && next_layer->getProtocol() == pcpp::TCP) {
+                auto* tcpLayer = static_cast<pcpp::TcpLayer*>(next_layer);
+                tcpLayer->getTcpHeader()->portSrc = htons(session.getNatPort());
+            } else if (next_layer && next_layer->getProtocol() == pcpp::UDP) {
+                auto* udpLayer = static_cast<pcpp::UdpLayer*>(next_layer);
+                udpLayer->getUdpHeader()->portSrc = htons(session.getNatPort());
+            } else if (protocol == kIcmpProtocol) {
+                updateIcmpIdentifier(ipLayerPacket, session.getNatPort());
+            }
+            translated = true;
+        }
     }
 
     if (translated) {
-        std::cout << "[NAT] Applied translation for session." << std::endl;
+        firewall::logging::Logger::info(
+            "[NAT] Translated packet src=" + src_ip.toString() +
+            " dst=" + dst_ip.toString() +
+            " nat_ip=" + session.getNatIp().toString() +
+            " nat_port=" + std::to_string(session.getNatPort())
+        );
     }
     return ipLayerPacket;
 }

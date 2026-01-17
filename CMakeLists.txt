@@ -29,6 +29,7 @@ add_executable(Basic_Firewall src/main.cpp
         src/policies/NatService.cpp
         src/routing/RoutingTable.cpp
         src/routing/RoutingEngine.cpp
+        src/logging/Logger.cpp
         src/security_profiles/SecurityProfile.cpp
         src/security_profiles/UrlFilteringProfile.cpp
         src/security_profiles/AntimalwareProfile.cpp

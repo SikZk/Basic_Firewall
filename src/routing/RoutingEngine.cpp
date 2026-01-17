@@ -11,6 +11,7 @@
 #include "pcapplusplus/TcpLayer.h"
 #include "pcapplusplus/UdpLayer.h"
 #include <arpa/inet.h>
+#include "../../include/logging/Logger.h"
 
 RoutingEngine::RoutingEngine() = default;
 static std::unordered_set<uint64_t> myMacAddresses;
@@ -276,6 +277,7 @@ void RoutingEngine::routePacket(
             if (policy.getNatType() == NatType::Source) {
                 auto nat_port_opt = nat_state.ports.acquire_free_port_number();
                 if (!nat_port_opt.has_value()) {
+                    firewall::logging::Logger::warn("[NAT] No free ports available for source NAT.");
                     break;
                 }
                 const uint16_t nat_port = *nat_port_opt;
@@ -303,6 +305,45 @@ void RoutingEngine::routePacket(
                 };
                 nat_state.table.createSession(reverse_key, session);
                 nat_session = static_cast<NatSession*>(nat_state.table.findSession(key));
+                firewall::logging::Logger::info(
+                    "[NAT] Created source NAT session src=" + ip->getSrcIPv4Address().toString() +
+                    " dst=" + ip->getDstIPv4Address().toString() +
+                    " nat_ip=" + nat_ip.toString() +
+                    " nat_port=" + std::to_string(nat_port)
+                );
+            } else {
+                const auto nat_ip = ip->getDstIPv4Address();
+                const auto internal_ip = policy.getTranslatedDestinationIp();
+                const uint16_t nat_port = flow.dst_port;
+                const uint16_t internal_port = flow.dst_port;
+
+                NatSession session(
+                    nat_ip,
+                    internal_ip,
+                    internal_port,
+                    ip->getSrcIPv4Address(),
+                    flow.src_port,
+                    nat_ip,
+                    nat_port,
+                    false
+                );
+
+                nat_state.table.createSession(key, session);
+
+                SessionFlowKey reverse_key{
+                    internal_ip,
+                    internal_port,
+                    ip->getSrcIPv4Address(),
+                    flow.src_port,
+                    flow.protocol
+                };
+                nat_state.table.createSession(reverse_key, session);
+                nat_session = static_cast<NatSession*>(nat_state.table.findSession(key));
+                firewall::logging::Logger::info(
+                    "[NAT] Created destination NAT session src=" + ip->getSrcIPv4Address().toString() +
+                    " dst=" + ip->getDstIPv4Address().toString() +
+                    " internal_dst=" + internal_ip.toString()
+                );
             }
             break;
         }
