@@ -16,6 +16,26 @@ RoutingEngine::RoutingEngine() = default;
 // Helper to cache our own MACs for fast loop detection
 static std::unordered_set<uint64_t> myMacAddresses;
 
+bool RoutingEngine::shouldDropDuplicate(uint64_t key, std::chrono::steady_clock::time_point now)
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    for (auto it = recentPackets.begin(); it != recentPackets.end();) {
+        if (now - it->second > DuplicateWindow) {
+            it = recentPackets.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    auto existing = recentPackets.find(key);
+    if (existing != recentPackets.end() && (now - existing->second) <= DuplicateWindow) {
+        return true;
+    }
+
+    recentPackets[key] = now;
+    return false;
+}
+
 void RoutingEngine::loadInterfaces(std::vector<pcpp::PcapLiveDevice*> ifs)
 {
     interfaces = std::move(ifs);
@@ -199,6 +219,19 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     auto* ip  = packet.getLayerOfType<pcpp::IPv4Layer>();
     if (!eth || !ip) return;
 
+    const auto now = std::chrono::steady_clock::now();
+    auto* iphdr = ip->getIPv4Header();
+    const uint64_t dedupKey =
+        (static_cast<uint64_t>(ip->getSrcIPv4Address().toInt()) << 32) |
+        static_cast<uint64_t>(ip->getDstIPv4Address().toInt());
+    const uint64_t keyed =
+        dedupKey ^
+        (static_cast<uint64_t>(pcpp::netToHost16(iphdr->ipId)) << 16) ^
+        (static_cast<uint64_t>(iphdr->protocol) << 8);
+    if (shouldDropDuplicate(keyed, now)) {
+        return;
+    }
+
     // --- FIX 2: GLOBAL LOOP PROTECTION ---
     // Calculate the integer value of the Source MAC
     uint64_t srcMacVal = 0;
@@ -228,7 +261,6 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     if (!outInterface) return;
 
     // TTL Check
-    auto* iphdr = ip->getIPv4Header();
     if (iphdr->timeToLive <= 1) return; // Drop
     iphdr->timeToLive -= 1;             // Decrement
 

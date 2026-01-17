@@ -2,10 +2,10 @@
 
 #include <vector>
 #include <string>
-#include <unordered_map>
 #include <optional>
 #include <mutex>
 #include <chrono>
+#include <unordered_map>
 
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/Packet.h"
@@ -45,11 +45,16 @@ private:
     static RoutingTable routing_table;
 
     static constexpr auto ArpTtl = std::chrono::minutes(5);
+    static constexpr auto DuplicateWindow = std::chrono::milliseconds(250);
+
+    std::unordered_map<uint64_t, std::chrono::steady_clock::time_point> recentPackets;
 
     pcpp::PcapLiveDevice* findInterfaceByName(const std::string& name) const;
 
     std::optional<pcpp::MacAddress> lookupArp(const std::string& ifName, const pcpp::IPv4Address& ip);
     void learnArp(const std::string& ifName, const pcpp::IPv4Address& ip, const pcpp::MacAddress& mac);
+
+    bool shouldDropDuplicate(uint64_t key, std::chrono::steady_clock::time_point now);
 
     void sendArpRequest(pcpp::PcapLiveDevice* outInterface, const pcpp::IPv4Address& targetIp);
     void sendArpReply(pcpp::PcapLiveDevice* outInterface,
