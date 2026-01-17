@@ -44,11 +44,15 @@ static void exitProgram(int) {
 
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
     Packet parsedPacket(rawPacket);
-    if (parsedPacket.isPacketOfType(Ethernet)) {
+    IPv4Layer* ipLayerPacket = parsedPacket.getLayerOfType<IPv4Layer>();
+    if (!ipLayerPacket) {
         return;
     }
-    IPv4Layer* ipLayerPacket = parsedPacket.getLayerOfType<IPv4Layer>();
     TcpLayer* tcpLayerPacket = parsedPacket.getLayerOfType<TcpLayer>();
+    if (!tcpLayerPacket) {
+        routingEngine.routePacket(parsedPacket, ipLayerPacket);
+        return;
+    }
 
     auto security_policy = matchBasedOnObject<IPv4Layer, SecurityPolicy>(
         ipLayerPacket,
@@ -113,7 +117,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
     // TODO in some NAT manager similar in logic to decryptionManager
     // ROUTING SHOULD TAKE PLACE HERE
 
-    routingEngine.routePacket(translated_packet, ipLayerPacket);
+    routingEngine.routePacket(parsedPacket, translated_packet);
 
     if (sessionTable.isPacketEndingSession(*tcpLayerPacket)) {
         sessionTable.eraseSession(key);

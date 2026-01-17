@@ -1,6 +1,8 @@
 #include "../../include/routing/RoutingEngine.h"
 #include <algorithm>
 #include <iostream>
+#include "pcapplusplus/EthLayer.h"
+#include "pcapplusplus/MacAddress.h"
 #include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 
@@ -18,9 +20,9 @@ void RoutingEngine::loadRoutingTable(const RoutingTable& table)
     routing_table = table;
 }
 
-void RoutingEngine::routePacket(pcpp::IPv4Layer* ipLayerPacket, pcpp::IPv4Layer* originalIpLayerPacket)
+void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::IPv4Layer* ipLayerPacket)
 {
-    if (!ipLayerPacket || !originalIpLayerPacket) {
+    if (!ipLayerPacket) {
         return;
     }
     auto destination = ipLayerPacket->getDstIPv4Address();
@@ -39,14 +41,25 @@ void RoutingEngine::routePacket(pcpp::IPv4Layer* ipLayerPacket, pcpp::IPv4Layer*
     }
 
     pcpp::PcapLiveDevice* outInterface = *it;
-    auto* data = originalIpLayerPacket->getData();
-    int length = static_cast<int>(originalIpLayerPacket->getDataLen());
-    if (length <= 0 || data == nullptr) {
-        std::cout << "[Routing] No packet data to forward." << std::endl;
+    auto* ethLayer = packet.getLayerOfType<pcpp::EthLayer>();
+    if (!ethLayer) {
+        std::cout << "[Routing] Missing Ethernet layer." << std::endl;
         return;
     }
 
-    if (!outInterface->sendPacket(data, length)) {
+    auto gateway = route->gateway;
+    pcpp::IPv4Address nextHop = gateway == pcpp::IPv4Address("0.0.0.0") ? destination : gateway;
+    pcpp::MacAddress nextHopMac = outInterface->getMacAddressOfIPv4Address(nextHop);
+    if (!nextHopMac.isValid()) {
+        std::cout << "[Routing] Failed to resolve MAC for " << nextHop.toString() << std::endl;
+        return;
+    }
+
+    ethLayer->setSourceMac(outInterface->getMacAddress());
+    ethLayer->setDestMac(nextHopMac);
+    packet.computeCalculateFields();
+
+    if (!outInterface->sendPacket(packet)) {
         std::cout << "[Routing] Failed to send packet on " << route->interfaceName << std::endl;
         return;
     }
