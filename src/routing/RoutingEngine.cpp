@@ -7,7 +7,10 @@
 
 #include "pcapplusplus/EthLayer.h"
 #include "pcapplusplus/ArpLayer.h"
+#include "pcapplusplus/TcpLayer.h"
+#include "pcapplusplus/UdpLayer.h"
 #include "pcapplusplus/SystemUtils.h"
+#include <arpa/inet.h>
 
 RoutingEngine::RoutingEngine() = default;
 static std::unordered_set<uint64_t> myMacAddresses;
@@ -165,7 +168,73 @@ void RoutingEngine::processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice*
     flushPending(ifName, arp->getSenderIpAddr(), arp->getSenderMacAddress());
 }
 
-void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table)
+namespace {
+struct TransportInfo
+{
+    uint16_t src_port{0};
+    uint16_t dst_port{0};
+    pcpp::ProtocolType protocol{pcpp::UnknownProtocol};
+};
+
+TransportInfo getTransportInfo(pcpp::Packet& packet, const pcpp::IPv4Layer& ipLayer)
+{
+    TransportInfo info;
+    const auto protocol = ipLayer.getIPv4Header()->protocol;
+    if (protocol == pcpp::PACKETPP_IPPROTO_TCP) {
+        if (auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>()) {
+            info.src_port = ntohs(tcp->getTcpHeader()->portSrc);
+            info.dst_port = ntohs(tcp->getTcpHeader()->portDst);
+            info.protocol = pcpp::TCP;
+        }
+    } else if (protocol == pcpp::PACKETPP_IPPROTO_UDP) {
+        if (auto* udp = packet.getLayerOfType<pcpp::UdpLayer>()) {
+            info.src_port = ntohs(udp->getUdpHeader()->portSrc);
+            info.dst_port = ntohs(udp->getUdpHeader()->portDst);
+            info.protocol = pcpp::UDP;
+        }
+    } else if (protocol == pcpp::PACKETPP_IPPROTO_ICMP) {
+        info.protocol = pcpp::ICMP;
+    }
+    return info;
+}
+
+void applyNatTranslation(NatSession& session, pcpp::Packet& packet, const TransportInfo& info)
+{
+    auto* ip = packet.getLayerOfType<pcpp::IPv4Layer>();
+    if (!ip) {
+        return;
+    }
+
+    const bool requires_ports = (info.protocol == pcpp::TCP || info.protocol == pcpp::UDP);
+    const bool outbound_port_match = !requires_ports || info.src_port == session.getInternalPort();
+    const bool inbound_port_match = !requires_ports || info.dst_port == session.getNatPort();
+
+    if (session.isSourceNat()) {
+        if (ip->getSrcIPv4Address() == session.getInternalIp() &&
+            outbound_port_match) {
+            ip->setSrcIPv4Address(session.getNatIp());
+            if (auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>()) {
+                tcp->getTcpHeader()->portSrc = htons(session.getNatPort());
+            } else if (auto* udp = packet.getLayerOfType<pcpp::UdpLayer>()) {
+                udp->getUdpHeader()->portSrc = htons(session.getNatPort());
+            }
+        } else if (ip->getDstIPv4Address() == session.getNatIp() &&
+                   inbound_port_match) {
+            ip->setDstIPv4Address(session.getInternalIp());
+            if (auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>()) {
+                tcp->getTcpHeader()->portDst = htons(session.getInternalPort());
+            } else if (auto* udp = packet.getLayerOfType<pcpp::UdpLayer>()) {
+                udp->getUdpHeader()->portDst = htons(session.getInternalPort());
+            }
+        }
+    }
+}
+} // namespace
+
+void RoutingEngine::routePacket(pcpp::Packet& packet,
+                                pcpp::PcapLiveDevice* inInterface,
+                                RoutingTable& routing_table,
+                                const std::vector<NatPolicy>& nat_policies)
 {
     auto* eth = packet.getLayerOfType<pcpp::EthLayer>();
     auto* ip  = packet.getLayerOfType<pcpp::IPv4Layer>();
@@ -185,6 +254,20 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
         learnArp(inInterface->getName(), ip->getSrcIPv4Address(), eth->getSourceMac());
     }
 
+    const auto transport = getTransportInfo(packet, *ip);
+    SessionFlowKey key{
+        ip->getSrcIPv4Address(),
+        transport.src_port,
+        ip->getDstIPv4Address(),
+        transport.dst_port,
+        transport.protocol
+    };
+    bool nat_applied = false;
+    if (auto* nat_session = NatPolicy::findSession(key)) {
+        applyNatTranslation(*nat_session, packet, transport);
+        nat_applied = true;
+    }
+
     const pcpp::IPv4Address dst = ip->getDstIPv4Address();
     auto route = routing_table.findRoute(dst);
 
@@ -193,11 +276,28 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     pcpp::PcapLiveDevice* outInterface = findInterfaceByName(route->interfaceName);
     if (!outInterface) return;
 
+    if (!nat_applied) {
+        for (const auto& policy : nat_policies) {
+            if (!policy.does_match_policy(*ip)) {
+                continue;
+            }
+            auto translated_source = policy.getTranslatedSourceIp();
+            if (translated_source == pcpp::IPv4Address::Zero) {
+                translated_source = outInterface->getIPv4Address();
+            }
+            if (auto* nat_session = policy.getOrCreateSession(key, translated_source)) {
+                applyNatTranslation(*nat_session, packet, transport);
+                nat_applied = true;
+            }
+            break;
+        }
+    }
+
     auto* iphdr = ip->getIPv4Header();
     if (iphdr->timeToLive <= 1) return;
     iphdr->timeToLive -= 1;
 
-    const pcpp::IPv4Address nextHop = dst;
+    const pcpp::IPv4Address nextHop = ip->getDstIPv4Address();
     const std::string outIfName = outInterface->getName();
 
     auto macOpt = lookupArp(outIfName, nextHop);

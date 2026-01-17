@@ -26,7 +26,9 @@ class NatPolicy : public Policy {
             std::pmr::string network_to_str,
             uint32_t         to_mask,
             std::uint16_t    src_port,
-            std::uint16_t    dest_port
+            std::uint16_t    dest_port,
+            std::pmr::string translated_source_ip_str = "0.0.0.0",
+            std::pmr::string translated_destination_ip_str = "0.0.0.0"
         ) : Policy(
             std::move(network_from_str),
             from_mask,
@@ -34,11 +36,16 @@ class NatPolicy : public Policy {
             to_mask,
             src_port,
             dest_port
-        )
+        ),
+        translated_source_ip(std::string(translated_source_ip_str)),
+        translated_destination_ip(std::string(translated_destination_ip_str))
         { };
         static void configureNatState(uint16_t port_start, uint16_t port_end);
 
-        pcpp::IPv4Layer applyNat(pcpp::IPv4Layer* ipLayer);
+        static NatSession* findSession(const SessionFlowKey& key);
+        NatSession* getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Address external_ip) const;
+        pcpp::IPv4Address getTranslatedSourceIp() const;
+        pcpp::IPv4Address getTranslatedDestinationIp() const;
 
 };
 

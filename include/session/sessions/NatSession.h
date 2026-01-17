@@ -23,6 +23,22 @@ public:
         bool is_source_nat
     );
     ~NatSession() = default;
+    pcpp::IPv4Address getInternalIp() const;
+    uint16_t getInternalPort() const;
+    pcpp::IPv4Address getExternalIp() const;
+    uint16_t getExternalPort() const;
+    pcpp::IPv4Address getNatIp() const;
+    uint16_t getNatPort() const;
+    bool isSourceNat() const;
+
+private:
+    pcpp::IPv4Address internal_ip_;
+    uint16_t internal_port_{0};
+    pcpp::IPv4Address external_ip_;
+    uint16_t external_port_{0};
+    pcpp::IPv4Address nat_ip_;
+    uint16_t nat_port_{0};
+    bool is_source_nat_{false};
 };
 
 #endif //BASIC_FIREWALL_NATSESSION_H

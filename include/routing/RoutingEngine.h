@@ -13,6 +13,7 @@
 
 // Adjust these includes to your project layout:
 #include "../routing/RoutingTable.h"   // must define RoutingTable and RouteEntry
+#include "../policies/NatPolicy.h"
 
 class RoutingEngine
 {
@@ -24,7 +25,10 @@ public:
 
     // Called from capture callback:
     void processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface);
-    void routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table);
+    void routePacket(pcpp::Packet& packet,
+                     pcpp::PcapLiveDevice* inInterface,
+                     RoutingTable& routing_table,
+                     const std::vector<NatPolicy>& nat_policies);
 
 private:
     struct ArpEntry

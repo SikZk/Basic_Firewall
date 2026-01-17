@@ -70,8 +70,43 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
 };
 void Config::parseNatPolicy(const boost::json::value& object)
 {
-    (void)object;
-    std::cout << "[Config] Skipping NAT policy parsing (no-op)." << std::endl;
+    if (!object.is_array()) {
+        return;
+    }
+    nat_policies.clear();
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) {
+            continue;
+        }
+        const auto& obj = entry.as_object();
+        if (!obj.contains("from") || !obj.contains("to") ||
+            !obj.contains("from_mask") || !obj.contains("to_mask")) {
+            continue;
+        }
+        const auto from = std::string(obj.at("from").as_string());
+        const auto to = std::string(obj.at("to").as_string());
+        const auto from_mask = static_cast<uint32_t>(obj.at("from_mask").as_int64());
+        const auto to_mask = static_cast<uint32_t>(obj.at("to_mask").as_int64());
+        const auto src_port = obj.contains("src_port") ? static_cast<uint16_t>(obj.at("src_port").as_int64()) : 0;
+        const auto dst_port = obj.contains("dst_port") ? static_cast<uint16_t>(obj.at("dst_port").as_int64()) : 0;
+        const auto translated_source_ip = obj.contains("translated_source_ip")
+            ? std::string(obj.at("translated_source_ip").as_string())
+            : "0.0.0.0";
+        const auto translated_destination_ip = obj.contains("translated_destination_ip")
+            ? std::string(obj.at("translated_destination_ip").as_string())
+            : "0.0.0.0";
+
+        nat_policies.emplace_back(
+            from,
+            from_mask,
+            to,
+            to_mask,
+            src_port,
+            dst_port,
+            translated_source_ip,
+            translated_destination_ip
+        );
+    }
 };
 void Config::parseRoutingTable(const boost::json::value& object)
 {
@@ -115,6 +150,9 @@ void Config::loadFromFile(const std::string& filepath)
     }
     if (obj.contains("routes")) {
         parseRoutingTable(obj.at("routes"));
+    }
+    if (obj.contains("nat_policies")) {
+        parseNatPolicy(obj.at("nat_policies"));
     }
 };
 void Config::parseInterfaces(const boost::json::value& object)
