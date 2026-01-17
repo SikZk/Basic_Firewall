@@ -3,149 +3,141 @@
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/RawPacket.h"
 #include "pcapplusplus/Packet.h"
+#include "pcapplusplus/EthLayer.h"
 #include "pcapplusplus/IPv4Layer.h"
+#include "pcapplusplus/ArpLayer.h"
+
 #include <cstdio>
 #include <csignal>
-#include <memory>
 #include <thread>
 #include <chrono>
-#include "../include/configuration/Config.h"
-#include "./utils.h"
-#include "../include/session/session_tables/DecryptionSessionTable.h"
-#include "../include/decryption/DecryptionManager.h"
-#include "../include/policies/NatService.h"
-#include "../include/routing/RoutingEngine.h"
 #include <iostream>
+#include <vector>
+#include <string>
+#include <unordered_set>
+
+#include "../include/configuration/Config.h"
+#include "../include/routing/RoutingEngine.h"
 
 using namespace pcpp;
 
-static PcapLiveDevice* captureInterface = nullptr;
-static Config configuration("../resources/config.json");
-
 static volatile std::sig_atomic_t stopSignal = 0;
-static SessionTable sessionTable;
-static DecryptionSessionTable decryptionSessionTable;
-static NatSessionTable natSessionTable;
 
+static Config configuration("../resources/config.json");
 static RoutingEngine routingEngine;
+static std::vector<PcapLiveDevice*> gInterfaces;
 
-DecryptionManager decryptionManager;
-NatService natService;
-
-
-
-static void exitProgram(int) {
+static void exitProgram(int)
+{
     stopSignal = 1;
-    if (captureInterface && captureInterface->isOpened()) {
-        captureInterface->stopCapture();
+    for (auto* dev : gInterfaces)
+    {
+        if (dev && dev->isOpened())
+            dev->stopCapture();
     }
 }
 
+static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
+{
+    if (!rawPacket || !inDev)
+        return;
 
-static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
-    Packet parsedPacket(rawPacket);
-    if (parsedPacket.isPacketOfType(Ethernet)) {
+    Packet packet(rawPacket);
+
+    // Need Ethernet for L2 forwarding
+    auto* eth = packet.getLayerOfType<EthLayer>();
+    if (!eth)
+        return;
+
+    // If we ever still see our injected frames, ignore
+    if (eth->getSourceMac() == inDev->getMacAddress())
+        return;
+
+    if (packet.isPacketOfType(ARP))
+    {
+        routingEngine.processArpPacket(packet, inDev);
         return;
     }
-    IPv4Layer* ipLayerPacket = parsedPacket.getLayerOfType<IPv4Layer>();
-    TcpLayer* tcpLayerPacket = parsedPacket.getLayerOfType<TcpLayer>();
 
-    auto security_policy = matchBasedOnObject<IPv4Layer, SecurityPolicy>(
-        ipLayerPacket,
-        configuration.security_policies
-    );
-    if (!security_policy.getAllowPacket()) return;
-    SessionFlowKey key = getSessionFlowKey(ipLayerPacket, tcpLayerPacket);
+    if (!packet.isPacketOfType(IPv4))
+        return;
 
-    Session* session = createOrGetSession(
-     sessionTable,
-        key,
-        ipLayerPacket,
-        tcpLayerPacket,
-        captureInterface
-    );
-
-    auto decryption_profile = matchBasedOnObject<Session, DecryptionProfile>(
-        session,
-        configuration.decryption_profiles
-    );
-    auto nat_policy = matchBasedOnObject<Session, NatPolicy >(
-         session,
-         configuration.nat_policies
-     );
-
-    // FIX 1: Change vector to hold shared_ptr
-    // Note: You must also update the return type of 'evaluate_security_profiles'
-    // in your SecurityPolicy class to return std::vector<std::shared_ptr<SecurityProfile>>
-    std::vector<std::shared_ptr<SecurityProfile>> security_profiles_to_apply = security_policy.evaluate_security_profiles(*ipLayerPacket);
-
-    Action action = ALLOW;
-    if (isNotEncryptedSession(session)) {
-        // FIX 2: Iterate by const reference to the pointer
-        for (const auto& profile : security_profiles_to_apply) {
-            // FIX 3: Use arrow operator -> to call scan
-            action = profile->scan(session, *ipLayerPacket);
-        }
-    } else if (decryption_profile.shouldDecrypt()) {
-        DecryptionSession decryption_session = createOrGetDecryptionSession(
-         decryptionSessionTable,
-            key,
-            session,
-            decryption_profile
-        );
-        decryptionManager.decrypt_and_enhance_session(decryption_session);
-
-        // FIX 4: Apply the same fix to the second loop
-        for (const auto& profile : security_profiles_to_apply) {
-            action = profile->scan(decryption_session, *ipLayerPacket);
-        }
-    }
-
-    NatSession nat_session = createOrGetNatSession(
-        natSessionTable,
-        key,
-        session,
-        nat_policy
-    );
-    IPv4Layer* translated_packet = natService.applyNat(nat_session, ipLayerPacket);
-
-    // TODO implement routing here, there should be some function like route that gets nat_session, the NAT could be implemented either in routing engine itself,
-    // TODO in some NAT manager similar in logic to decryptionManager
-    // ROUTING SHOULD TAKE PLACE HERE
-
-    routingEngine.routePacket(translated_packet, ipLayerPacket);
-
-    if (sessionTable.isPacketEndingSession(*tcpLayerPacket)) {
-        sessionTable.eraseSession(key);
-        natSessionTable.eraseSession(key);
-        decryptionSessionTable.eraseSession(key);
-    }
+    routingEngine.routePacket(packet, inDev);
 }
 
-int main() {
-    printf("hello world\n");
+int main()
+{
+    std::printf("router start\n");
+
     std::signal(SIGINT, exitProgram);
-    std::signal(SIGSTOP, exitProgram);
+    std::signal(SIGTERM, exitProgram);
 
     configuration.load();
-    routingEngine.loadInterfaces(configuration.getCaptureInterfaces());
-    routingEngine.loadRoutingTable(configuration.routing_table);
 
-    for (PcapLiveDevice* interface : configuration.getCaptureInterfaces()) {
-        if (!interface->open()) return 1;
+    // Load and DEDUP interfaces (avoid capturing the same interface multiple times)
+    {
+        auto ifs = configuration.getCaptureInterfaces();
+        std::unordered_set<std::string> seen;
+        gInterfaces.clear();
+        gInterfaces.reserve(ifs.size());
 
-        if (!interface->startCapture(onPacketArrives, nullptr)) {
-            interface->close();
-            return 1;
+        for (auto* dev : ifs)
+        {
+            if (!dev) continue;
+            if (dev->getLoopback()) continue; // generally avoid "lo"
+
+            const std::string name = dev->getName();
+            if (seen.insert(name).second)
+                gInterfaces.push_back(dev);
         }
     }
 
-    while (!stopSignal) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    routingEngine.loadInterfaces(gInterfaces);
+    routingEngine.loadRoutingTable(configuration.routing_table);
+
+    for (PcapLiveDevice* dev : gInterfaces)
+    {
+        // Open with explicit configuration: capture IN only (prevents out/loop duplicates)
+        PcapLiveDevice::DeviceConfiguration cfg;
+        cfg.mode = PcapLiveDevice::Promiscuous;
+        cfg.direction = PcapLiveDevice::PCPP_IN;   // CRITICAL: inbound only :contentReference[oaicite:1]{index=1}
+        cfg.snapshotLength = 65535;
+
+        if (!dev->open(cfg))
+        {
+            std::cerr << "Failed to open: " << dev->getName() << std::endl;
+            return 1;
+        }
+
+        // Optional: reduce work. You can keep your MAC filter if you want,
+        // but it should no longer be necessary once direction=PCPP_IN.
+        if (!dev->setFilter("arp or ip"))
+        {
+            std::cerr << "Failed to set filter on " << dev->getName() << std::endl;
+        }
+
+        if (!dev->startCapture(onPacketArrives, nullptr))
+        {
+            std::cerr << "Failed to start capture: " << dev->getName() << std::endl;
+            dev->close();
+            return 1;
+        }
+
+        std::cout << "Capturing IN on: " << dev->getName()
+                  << " IP=" << dev->getIPv4Address().toString()
+                  << " MAC=" << dev->getMacAddress().toString()
+                  << std::endl;
     }
 
-    for (PcapLiveDevice* interface : configuration.getCaptureInterfaces()) {
-        interface->close();
+    while (!stopSignal)
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    for (PcapLiveDevice* dev : gInterfaces)
+    {
+        if (dev && dev->isOpened())
+            dev->close();
     }
+
+    std::cout << "router stop\n";
     return 0;
 }

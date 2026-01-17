@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 project(Basic_Firewall)
 set(CMAKE_CXX_STANDARD 20)
 
-
 add_executable(Basic_Firewall src/main.cpp
         include/policies/SecurityPolicy.h
         include/policies/NatPolicy.h

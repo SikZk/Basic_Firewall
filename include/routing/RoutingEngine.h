@@ -1,22 +1,61 @@
-//
-// Created by mikolaj on 11/30/25.
-//
+#pragma once
 
-#ifndef BASIC_FIREWALL_ROUTINGENGINE_H
-#define BASIC_FIREWALL_ROUTINGENGINE_H
-#include <pcapplusplus/IPv4Layer.h>
-#include "pcapplusplus/PcapLiveDeviceList.h"
-#include "RoutingTable.h"
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <optional>
+#include <mutex>
+#include <chrono>
 
-class RoutingEngine {
-    private:
-        static RoutingTable routing_table;
-        std::vector<pcpp::PcapLiveDevice*> interfaces;
-    public:
-        RoutingEngine();
-        void routePacket(pcpp::IPv4Layer *ipLayerPacket, pcpp::IPv4Layer *originalIpLayerPacket);
-        void loadInterfaces(std::vector<pcpp::PcapLiveDevice*> interfaces);
-        void loadRoutingTable(const RoutingTable& table);
+#include "pcapplusplus/PcapLiveDevice.h"
+#include "pcapplusplus/Packet.h"
+#include "pcapplusplus/IPv4Layer.h"
+
+// Adjust these includes to your project layout:
+#include "../routing/RoutingTable.h"   // must define RoutingTable and RouteEntry
+
+class RoutingEngine
+{
+public:
+    RoutingEngine();
+
+    void loadInterfaces(std::vector<pcpp::PcapLiveDevice*> interfaces);
+    void loadRoutingTable(const RoutingTable& table);
+
+    // Called from capture callback:
+    void processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface);
+    void routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface);
+
+private:
+    struct ArpEntry
+    {
+        pcpp::MacAddress mac;
+        std::chrono::steady_clock::time_point expiresAt;
+    };
+
+    // per-interface ARP cache: ifName -> (ipInt -> entry)
+    std::unordered_map<std::string, std::unordered_map<uint32_t, ArpEntry>> arpCache;
+
+    // pending frames waiting for ARP: ifName -> (nextHopIpInt -> list of raw ethernet frames)
+    std::unordered_map<std::string, std::unordered_map<uint32_t, std::vector<std::vector<uint8_t>>>> pending;
+
+    std::mutex mtx;
+
+    std::vector<pcpp::PcapLiveDevice*> interfaces;
+    static RoutingTable routing_table;
+
+    static constexpr auto ArpTtl = std::chrono::minutes(5);
+
+    pcpp::PcapLiveDevice* findInterfaceByName(const std::string& name) const;
+
+    std::optional<pcpp::MacAddress> lookupArp(const std::string& ifName, const pcpp::IPv4Address& ip);
+    void learnArp(const std::string& ifName, const pcpp::IPv4Address& ip, const pcpp::MacAddress& mac);
+
+    void sendArpRequest(pcpp::PcapLiveDevice* outInterface, const pcpp::IPv4Address& targetIp);
+    void sendArpReply(pcpp::PcapLiveDevice* outInterface,
+                      const pcpp::MacAddress& dstMac,
+                      const pcpp::IPv4Address& dstIp);
+
+    void enqueuePending(const std::string& ifName, const pcpp::IPv4Address& nextHop, pcpp::Packet& packet);
+    void flushPending(const std::string& ifName, const pcpp::IPv4Address& ip, const pcpp::MacAddress& mac);
 };
-
-#endif //BASIC_FIREWALL_ROUTINGENGINE_H
