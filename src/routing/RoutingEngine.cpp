@@ -1,12 +1,14 @@
 #include "../../include/routing/RoutingEngine.h"
 #include <algorithm>
 #include <iostream>
+#include "pcapplusplus/PcapLiveDeviceList.h"
+#include "pcapplusplus/PcapLiveDevice.h"
 
 RoutingTable RoutingEngine::routing_table;
 
 RoutingEngine::RoutingEngine() = default;
 
-void RoutingEngine::loadInterfaces(std::vector<PcapLiveDevice*> interfaces)
+void RoutingEngine::loadInterfaces(std::vector<pcpp::PcapLiveDevice*> interfaces)
 {
     this->interfaces = std::move(interfaces);
 }
@@ -28,7 +30,7 @@ void RoutingEngine::routePacket(pcpp::IPv4Layer* ipLayerPacket, pcpp::IPv4Layer*
         return;
     }
 
-    auto it = std::find_if(interfaces.begin(), interfaces.end(), [&](PcapLiveDevice* device) {
+    auto it = std::find_if(interfaces.begin(), interfaces.end(), [&](pcpp::PcapLiveDevice* device) {
         return device && device->getName() == route->interfaceName;
     });
     if (it == interfaces.end()) {
@@ -36,7 +38,7 @@ void RoutingEngine::routePacket(pcpp::IPv4Layer* ipLayerPacket, pcpp::IPv4Layer*
         return;
     }
 
-    PcapLiveDevice* outInterface = *it;
+    pcpp::PcapLiveDevice* outInterface = *it;
     auto* data = originalIpLayerPacket->getData();
     int length = static_cast<int>(originalIpLayerPacket->getDataLen());
     if (length <= 0 || data == nullptr) {

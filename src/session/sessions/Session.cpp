@@ -29,8 +29,6 @@ SessionFlowKey Session::generateSessionFlowKey(
 ){
     return SessionFlowKey{source_ip, source_port, destination_ip, destination_port, pcpp::TCP};
 }
-
-};
 uint8_t* Session::getData()
 {
     return this->data;

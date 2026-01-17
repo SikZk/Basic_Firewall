@@ -8,6 +8,8 @@
 #include <boost/unordered_set.hpp>
 #include <vector>
 #include <pcapplusplus/RawPacket.h>
+
+#include "Policy.h"
 #include "../session/session_tables/NatSessionTable.h"
 
 

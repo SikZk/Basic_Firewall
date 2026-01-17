@@ -5,17 +5,17 @@
 #ifndef BASIC_FIREWALL_ROUTINGENGINE_H
 #define BASIC_FIREWALL_ROUTINGENGINE_H
 #include <pcapplusplus/IPv4Layer.h>
-
+#include "pcapplusplus/PcapLiveDeviceList.h"
 #include "RoutingTable.h"
 
 class RoutingEngine {
     private:
         static RoutingTable routing_table;
-        std::vector<PcapLiveDevice*> interfaces;
+        std::vector<pcpp::PcapLiveDevice*> interfaces;
     public:
         RoutingEngine();
         void routePacket(pcpp::IPv4Layer *ipLayerPacket, pcpp::IPv4Layer *originalIpLayerPacket);
-        void loadInterfaces(std::vector<PcapLiveDevice*> interfaces);
+        void loadInterfaces(std::vector<pcpp::PcapLiveDevice*> interfaces);
         void loadRoutingTable(const RoutingTable& table);
 };
 

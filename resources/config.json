@@ -6,15 +6,15 @@
   },
   "routes": [
     {
-      "network": "0.0.0.0",
-      "mask": "0.0.0.0",
-      "gateway": "0.0.0.0",
+      "network": "10.1.0.1",
+      "mask": "255.255.255.0",
+      "gateway": "10.1.0.2",
       "interface": "ens37"
     },
     {
-      "network": "10.0.0.0",
+      "network": "10.2.0.1",
       "mask": "255.255.255.0",
-      "gateway": "0.0.0.0",
+      "gateway": "10.2.0.2",
       "interface": "ens38"
     }
   ]

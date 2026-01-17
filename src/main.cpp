@@ -122,6 +122,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
 }
 
 int main() {
+    printf("hello world\n");
     std::signal(SIGINT, exitProgram);
     std::signal(SIGSTOP, exitProgram);
 

@@ -1,4 +1,6 @@
 #include "../../../include/session/session_tables/DecryptionSessionTable.h"
+
+#include <mutex>
 #include <boost/unordered/unordered_map.hpp>
 
 DecryptionSessionTable::SessionMap DecryptionSessionTable::decryption_sessions;

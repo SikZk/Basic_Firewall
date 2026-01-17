@@ -1,5 +1,4 @@
 #include "../../include/configuration/Config.h"
-#include <boost/json/src.hpp>
 #include <pcapplusplus/PcapLiveDeviceList.h>
 #include <fstream>
 #include <iostream>
@@ -7,7 +6,7 @@
 
 void Config::load()
 {
-    loadFromFile(configuration_file_path);
+    loadFromFile("../resources/config.json");
 
     if (security_policies.empty()) {
         security_policies.emplace_back(
