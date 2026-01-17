@@ -2,6 +2,7 @@
 #define BASIC_FIREWALL_CONFIG_H
 #include <vector>
 #include <boost/json/src.hpp>
+#include <pcapplusplus/PcapLiveDevice.h>
 #include "../policies/SecurityPolicy.h"
 #include "../policies/NatPolicy.h"
 #include "../decryption/DecryptionProfile.h"

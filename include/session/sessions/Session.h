@@ -62,6 +62,8 @@ class Session {
         SessionFlow destination_to_source;
         SessionState session_state;
         uint8_t* data;
+        size_t   data_length = 0;
+        size_t   data_capacity = 0;
     public:
         Session(
             pcpp::IPv4Address firewall_interface_src_ip,

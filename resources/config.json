@@ -1,6 +1,7 @@
 {
   "interfaces": {
-      "port1": "wlp0s20f3",
-      "port2": "enp3s0"
+      "port1": "ens34",
+      "port2": "ens37",
+      "port3": "ens38"
   }
 }

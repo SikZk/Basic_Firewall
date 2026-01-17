@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(Basic_Firewall CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(Boost REQUIRED)
 
 add_executable(Basic_Firewall src/main.cpp
         include/policies/SecurityPolicy.h
@@ -14,7 +15,16 @@ add_executable(Basic_Firewall src/main.cpp
         include/routing/RoutingTable.h
         include/configuration/Config.h
         include/policies/Policy.h
-        src/utils.cpp)
+        src/utils.cpp
+        src/configuration/Config.cpp
+        src/session/sessions/Session.cpp
+        src/decryption/DecryptionManager.cpp
+        src/decryption/DecryptionProfile.cpp
+        src/session/sessions/DecryptionSession.cpp
+)
+target_link_libraries(Basic_Firewall PRIVATE Boost::headers)
+target_include_directories(Basic_Firewall PRIVATE /usr/include/boost)
+
 
 target_include_directories(Basic_Firewall PRIVATE
         /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/include
