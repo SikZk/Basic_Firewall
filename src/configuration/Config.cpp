@@ -70,8 +70,79 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
 };
 void Config::parseNatPolicy(const boost::json::value& object)
 {
-    (void)object;
-    std::cout << "[Config] Skipping NAT policy parsing (no-op)." << std::endl;
+    if (!object.is_object()) {
+        return;
+    }
+
+    const auto& obj = object.as_object();
+    if (obj.contains("port_pool") && obj.at("port_pool").is_object()) {
+        const auto& pool = obj.at("port_pool").as_object();
+        uint16_t start = 10000;
+        uint16_t end = 20000;
+        if (pool.contains("start") && pool.at("start").is_int64()) {
+            start = static_cast<uint16_t>(pool.at("start").as_int64());
+        }
+        if (pool.contains("end") && pool.at("end").is_int64()) {
+            end = static_cast<uint16_t>(pool.at("end").as_int64());
+        }
+        NatPolicy::configureNatState(start, end);
+    }
+
+    if (!obj.contains("policies") || !obj.at("policies").is_array()) {
+        return;
+    }
+
+    nat_policies.clear();
+    for (const auto& entry : obj.at("policies").as_array()) {
+        if (!entry.is_object()) {
+            continue;
+        }
+        const auto& policy_obj = entry.as_object();
+
+        auto from_network = std::string(policy_obj.at("from").as_string());
+        auto to_network = std::string(policy_obj.at("to").as_string());
+        uint32_t from_mask = static_cast<uint32_t>(policy_obj.at("from_mask").as_int64());
+        uint32_t to_mask = static_cast<uint32_t>(policy_obj.at("to_mask").as_int64());
+
+        std::uint16_t src_port = 0;
+        std::uint16_t dest_port = 0;
+        if (policy_obj.contains("src_port") && policy_obj.at("src_port").is_int64()) {
+            src_port = static_cast<uint16_t>(policy_obj.at("src_port").as_int64());
+        }
+        if (policy_obj.contains("dest_port") && policy_obj.at("dest_port").is_int64()) {
+            dest_port = static_cast<uint16_t>(policy_obj.at("dest_port").as_int64());
+        }
+
+        NatType type = NatType::Source;
+        if (policy_obj.contains("type") && policy_obj.at("type").is_string()) {
+            const auto type_str = std::string(policy_obj.at("type").as_string());
+            if (type_str == "destination") {
+                type = NatType::Destination;
+            }
+        }
+
+        std::string translated_source_ip = "0.0.0.0";
+        std::string translated_destination_ip = "0.0.0.0";
+
+        if (policy_obj.contains("translated_source_ip") && policy_obj.at("translated_source_ip").is_string()) {
+            translated_source_ip = std::string(policy_obj.at("translated_source_ip").as_string());
+        }
+        if (policy_obj.contains("translated_destination_ip") && policy_obj.at("translated_destination_ip").is_string()) {
+            translated_destination_ip = std::string(policy_obj.at("translated_destination_ip").as_string());
+        }
+
+        nat_policies.emplace_back(
+            from_network,
+            from_mask,
+            to_network,
+            to_mask,
+            src_port,
+            dest_port,
+            type,
+            translated_source_ip,
+            translated_destination_ip
+        );
+    }
 };
 void Config::parseRoutingTable(const boost::json::value& object)
 {
@@ -115,6 +186,9 @@ void Config::loadFromFile(const std::string& filepath)
     }
     if (obj.contains("routes")) {
         parseRoutingTable(obj.at("routes"));
+    }
+    if (obj.contains("nat")) {
+        parseNatPolicy(obj.at("nat"));
     }
 };
 void Config::parseInterfaces(const boost::json::value& object)
