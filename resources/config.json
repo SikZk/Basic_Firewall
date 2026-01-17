@@ -16,5 +16,25 @@
       "gateway": "0.0.0.0",
       "interface": "ens38"
     }
+  ],
+  "nat": {
+    "port_pool": {
+      "start": 10000,
+      "end": 20000
+    }
+  },
+  "nat_policies": [
+    {
+      "from": {
+        "network": "10.1.0.0",
+        "mask": 24
+      },
+      "to": {
+        "network": "0.0.0.0",
+        "mask": 0
+      },
+      "translated_source_ip": "10.2.0.1",
+      "source_nat": true
+    }
   ]
 }

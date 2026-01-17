@@ -101,6 +101,8 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
         natSessionTable,
         key,
         session,
+        ipLayerPacket,
+        tcpLayerPacket,
         nat_policy
     );
     IPv4Layer* translated_packet = natService.applyNat(nat_session, ipLayerPacket);

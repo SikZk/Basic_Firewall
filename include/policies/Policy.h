@@ -38,6 +38,12 @@ class Policy {
 
     // Metoda sprawdzająca czy dany pakiet pasuje do polityki
     bool does_match_policy(pcpp::IPv4Layer ipv4_packet);
+    bool matchesFlow(
+        const pcpp::IPv4Address& source_ip,
+        const pcpp::IPv4Address& destination_ip,
+        std::uint16_t source_port,
+        std::uint16_t destination_port
+    ) const;
 
 
 };

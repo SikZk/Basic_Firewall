@@ -11,18 +11,28 @@
 
 
 class NatSession : public Session {
+private:
+    pcpp::IPv4Address nat_ip;
+    uint16_t nat_port;
+    bool source_nat;
+    bool destination_nat;
+
 public:
     NatSession(
-        pcpp::IPv4Address firewall_interface_ip,
         pcpp::IPv4Address source_ip,
         uint16_t          source_port,
         pcpp::IPv4Address destination_ip,
         uint16_t          destination_port,
         pcpp::IPv4Address nat_ip,
         uint16_t nat_port,
-        bool is_source_nat
+        bool is_source_nat,
+        bool is_destination_nat
     );
     ~NatSession() = default;
+    const pcpp::IPv4Address& getNatIp() const;
+    uint16_t getNatPort() const;
+    bool isSourceNat() const;
+    bool isDestinationNat() const;
 };
 
 #endif //BASIC_FIREWALL_NATSESSION_H
