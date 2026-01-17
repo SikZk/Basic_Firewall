@@ -6,6 +6,7 @@
 #include "pcapplusplus/IPv4Layer.h"
 #include <cstdio>
 #include <csignal>
+#include <memory>
 #include <thread>
 #include <chrono>
 #include "../include/configuration/Config.h"
@@ -68,15 +69,21 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         configuration.decryption_profiles
     );
     auto nat_policy = matchBasedOnObject<Session, NatPolicy >(
-        session,
-        configuration.nat_policies
-    );
-    std::vector<SecurityProfile> security_profiles_to_apply = security_policy.evaluate_security_profiles(*ipLayerPacket);
+         session,
+         configuration.nat_policies
+     );
+
+    // FIX 1: Change vector to hold shared_ptr
+    // Note: You must also update the return type of 'evaluate_security_profiles'
+    // in your SecurityPolicy class to return std::vector<std::shared_ptr<SecurityProfile>>
+    std::vector<std::shared_ptr<SecurityProfile>> security_profiles_to_apply = security_policy.evaluate_security_profiles(*ipLayerPacket);
 
     Action action = ALLOW;
     if (isNotEncryptedSession(session)) {
-        for (SecurityProfile profile : security_profiles_to_apply) {
-            action = profile.scan(session, *ipLayerPacket);
+        // FIX 2: Iterate by const reference to the pointer
+        for (const auto& profile : security_profiles_to_apply) {
+            // FIX 3: Use arrow operator -> to call scan
+            action = profile->scan(session, *ipLayerPacket);
         }
     } else if (decryption_profile.shouldDecrypt()) {
         DecryptionSession decryption_session = createOrGetDecryptionSession(
@@ -87,9 +94,9 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice*, void*) {
         );
         decryptionManager.decrypt_and_enhance_session(decryption_session);
 
-        // TODO somehow fix this iteration, its not working because SecurityProfile is abstract class, not sure how to work around that (uzyj shared ptra!!)
-        for (SecurityProfile profile : security_profiles_to_apply) {
-            action = profile.scan(decryption_session, *ipLayerPacket);
+        // FIX 4: Apply the same fix to the second loop
+        for (const auto& profile : security_profiles_to_apply) {
+            action = profile->scan(decryption_session, *ipLayerPacket);
         }
     }
 

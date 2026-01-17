@@ -40,7 +40,7 @@ class SecurityPolicy : public Policy {
           security_profiles(std::move(security_profiles))
         {};
 
-        std::vector<SecurityProfile> evaluate_security_profiles(pcpp::IPv4Layer& ipv4_packet);
+        std::vector<std::shared_ptr<SecurityProfile>> evaluate_security_profiles(const pcpp::IPv4Layer& ipLayer);
         bool getAllowPacket();
 };
 
