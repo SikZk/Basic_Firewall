@@ -19,6 +19,12 @@ class NatSessionTable : public SessionTable{
 
         Session& createSession(SessionFlowKey const& key, NatSession session);
         Session* findSession(SessionFlowKey const& key);
+        NatSession* findByNatMapping(
+            const pcpp::IPv4Address& nat_ip,
+            uint16_t nat_port,
+            const pcpp::IPv4Address& external_ip,
+            uint16_t external_port
+        );
         void eraseSession(SessionFlowKey const& key);
         bool doesSessionExist(const SessionFlowKey& key) const;
 };
