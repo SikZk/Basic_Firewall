@@ -384,4 +384,18 @@ void RoutingEngine::routePacket(
     packet.computeCalculateFields();
 
     outInterface->sendPacket(&packet, false);
+
+    const std::string inIfName = inInterface ? inInterface->getName() : "unknown";
+    std::string portInfo;
+    if (flow.has_ports) {
+        portInfo = " src_port=" + std::to_string(flow.src_port) +
+            " dst_port=" + std::to_string(flow.dst_port);
+    }
+    firewall::logging::Logger::info(
+        "[ROUTE] Forwarded packet src=" + ip->getSrcIPv4Address().toString() +
+        " dst=" + ip->getDstIPv4Address().toString() +
+        portInfo +
+        " in_if=" + inIfName +
+        " out_if=" + outIfName
+    );
 }

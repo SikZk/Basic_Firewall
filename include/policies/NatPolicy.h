@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <string>
-#include <string_view>
 
 #include "Policy.h"
 #include "../session/session_tables/NatSessionTable.h"
@@ -22,20 +21,27 @@ private:
 
 public:
     NatPolicy(
-        std::string_view network_from_str,
+        std::string      network_from_str,
         uint32_t         from_mask,
-        std::string_view network_to_str,
+        std::string      network_to_str,
         uint32_t         to_mask,
         std::uint16_t    src_port,
         std::uint16_t    dest_port,
         NatType          type = NatType::Source,
-        std::string_view translated_source_ip_str = "0.0.0.0",
-        std::string_view translated_destination_ip_str = "0.0.0.0"
+        std::string      translated_source_ip_str = "0.0.0.0",
+        std::string      translated_destination_ip_str = "0.0.0.0"
     )
-    : Policy(network_from_str, from_mask, network_to_str, to_mask, src_port, dest_port),
+    : Policy(
+        std::move(network_from_str),
+        from_mask,
+        std::move(network_to_str),
+        to_mask,
+        src_port,
+        dest_port
+    ),
       nat_type(type),
-      translated_source_ip(std::string(translated_source_ip_str)),
-      translated_destination_ip(std::string(translated_destination_ip_str))
+      translated_source_ip(std::move(translated_source_ip_str)),
+      translated_destination_ip(std::move(translated_destination_ip_str))
     {}
 
     static void configureNatState(uint16_t port_start, uint16_t port_end);

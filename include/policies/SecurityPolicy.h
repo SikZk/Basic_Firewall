@@ -8,7 +8,6 @@
 #include <pcapplusplus/IPv4Layer.h>
 #include <vector>
 #include <string>
-#include <memory_resource>
 #include "Policy.h"
 
 #include "../security_profiles/SecurityProfile.h"
@@ -19,13 +18,13 @@ class SecurityPolicy : public Policy {
         std::vector<std::shared_ptr<SecurityProfile>> security_profiles;
     public:
         SecurityPolicy(
-            std::pmr::string network_from_str,
-            std::uint32_t    from_mask,
-            std::pmr::string network_to_str,
-            std::uint32_t    to_mask,
-            std::uint16_t    src_port,
-            std::uint16_t    dest_port,
-            bool             allow_packet,
+            std::string network_from_str,
+            std::uint32_t from_mask,
+            std::string network_to_str,
+            std::uint32_t to_mask,
+            std::uint16_t src_port,
+            std::uint16_t dest_port,
+            bool allow_packet,
             std::vector<std::shared_ptr<SecurityProfile>> security_profiles
         )
         : Policy(

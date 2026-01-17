@@ -5,7 +5,6 @@
 #include <pcapplusplus/IPv4Layer.h>
 #include <cstdint>
 #include <string>
-#include <string_view>
 
 class Policy {
 private:
@@ -18,15 +17,15 @@ private:
 
 public:
     Policy(
-        std::string_view network_from_str,
-        uint32_t         from_mask,
-        std::string_view network_to_str,
-        uint32_t         to_mask,
-        std::uint16_t    src_port,
-        std::uint16_t    dest_port
+        std::string     network_from_str,
+        uint32_t        from_mask,
+        std::string     network_to_str,
+        uint32_t        to_mask,
+        std::uint16_t   src_port,
+        std::uint16_t   dest_port
     )
-    : network_from(std::string(network_from_str)),
-      network_to(std::string(network_to_str)),
+    : network_from(std::move(network_from_str)),
+      network_to(std::move(network_to_str)),
       network_from_mask(from_mask),
       network_to_mask(to_mask),
       source_port(src_port),
