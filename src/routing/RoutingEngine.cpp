@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstring>
 #include <unordered_set>
+#include <string>
 
 #include "pcapplusplus/EthLayer.h"
 #include "pcapplusplus/ArpLayer.h"
@@ -11,6 +12,7 @@
 #include "pcapplusplus/TcpLayer.h"
 #include "pcapplusplus/UdpLayer.h"
 #include <arpa/inet.h>
+#include "../../include/utils/Logger.h"
 
 RoutingEngine::RoutingEngine() = default;
 static std::unordered_set<uint64_t> myMacAddresses;
@@ -276,6 +278,7 @@ void RoutingEngine::routePacket(
             if (policy.getNatType() == NatType::Source) {
                 auto nat_port_opt = nat_state.ports.acquire_free_port_number();
                 if (!nat_port_opt.has_value()) {
+                    Logging::logLine("[NAT]", "No available ports in pool for source NAT.");
                     break;
                 }
                 const uint16_t nat_port = *nat_port_opt;
@@ -303,6 +306,45 @@ void RoutingEngine::routePacket(
                 };
                 nat_state.table.createSession(reverse_key, session);
                 nat_session = static_cast<NatSession*>(nat_state.table.findSession(key));
+
+                Logging::logLine(
+                    "[NAT]",
+                    "Created SNAT session for " + ip->getSrcIPv4Address().toString() +
+                        " -> " + ip->getDstIPv4Address().toString() +
+                        " using " + nat_ip.toString() + ":" + std::to_string(nat_port)
+                );
+            } else if (policy.getNatType() == NatType::Destination) {
+                const auto nat_ip = policy.getTranslatedDestinationIp();
+                const uint16_t nat_port = flow.dst_port;
+
+                NatSession session(
+                    nat_ip,
+                    nat_ip,
+                    nat_port,
+                    ip->getDstIPv4Address(),
+                    flow.dst_port,
+                    nat_ip,
+                    nat_port,
+                    false
+                );
+
+                nat_state.table.createSession(key, session);
+
+                SessionFlowKey reverse_key{
+                    nat_ip,
+                    nat_port,
+                    ip->getSrcIPv4Address(),
+                    flow.src_port,
+                    flow.protocol
+                };
+                nat_state.table.createSession(reverse_key, session);
+                nat_session = static_cast<NatSession*>(nat_state.table.findSession(key));
+
+                Logging::logLine(
+                    "[NAT]",
+                    "Created DNAT session for " + ip->getDstIPv4Address().toString() +
+                        " -> " + nat_ip.toString() + ":" + std::to_string(nat_port)
+                );
             }
             break;
         }

@@ -2,9 +2,11 @@
 #include <boost/unordered/unordered_map.hpp>
 
 NatSessionTable::SessionMap NatSessionTable::nat_sessions;
+std::mutex NatSessionTable::nat_mutex;
 
 Session& NatSessionTable::createSession(SessionFlowKey const& key, NatSession session)
 {
+    std::lock_guard<std::mutex> lock(nat_mutex);
     auto it = nat_sessions.find(key);
     if (it != nat_sessions.end()) {
         return it->second;
@@ -15,6 +17,7 @@ Session& NatSessionTable::createSession(SessionFlowKey const& key, NatSession se
 
 Session* NatSessionTable::findSession(SessionFlowKey const& key)
 {
+    std::lock_guard<std::mutex> lock(nat_mutex);
     auto it = nat_sessions.find(key);
     if (it == nat_sessions.end()) {
         return nullptr;
@@ -24,16 +27,19 @@ Session* NatSessionTable::findSession(SessionFlowKey const& key)
 
 void NatSessionTable::eraseSession(SessionFlowKey const& key)
 {
+    std::lock_guard<std::mutex> lock(nat_mutex);
     nat_sessions.erase(key);
 }
 
 bool NatSessionTable::doesSessionExist(const SessionFlowKey& key) const
 {
+    std::lock_guard<std::mutex> lock(nat_mutex);
     return nat_sessions.find(key) != nat_sessions.end();
 }
 
 std::optional<uint16_t> PortPool::acquire_free_port_number()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (used_.empty()) {
         return std::nullopt;
     }
@@ -50,6 +56,7 @@ std::optional<uint16_t> PortPool::acquire_free_port_number()
 
 void PortPool::release_port(uint16_t port)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (port < start_ || port > end_) {
         return;
     }

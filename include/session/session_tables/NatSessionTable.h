@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_NATSESSIONTABLE_H
 #define BASIC_FIREWALL_NATSESSIONTABLE_H
 #include <optional>
+#include <mutex>
 #include <boost/unordered/unordered_map_fwd.hpp>
 
 #include "./SessionTable.h"
@@ -15,6 +16,7 @@ class NatSessionTable : public SessionTable{
     private:
         using SessionMap = boost::unordered_map<SessionFlowKey, NatSession, SessionKeyHash, SessionKeyEq>;
         static SessionMap nat_sessions;
+        static std::mutex nat_mutex;
     public:
 
         Session& createSession(SessionFlowKey const& key, NatSession session);
@@ -29,6 +31,7 @@ private:
     uint16_t end_;
     std::vector<bool> used_;
     uint16_t next_{0};
+    std::mutex mutex_;
 public:
     PortPool(
         uint16_t port_pool_from, uint16_t port_pool_to

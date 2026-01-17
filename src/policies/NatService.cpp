@@ -1,8 +1,9 @@
 #include "../../include/policies/NatService.h"
 #include <arpa/inet.h>
-#include <iostream>
+#include <sstream>
 #include "pcapplusplus/TcpLayer.h"
 #include "pcapplusplus/UdpLayer.h"
+#include "../../include/utils/Logger.h"
 
 namespace {
 constexpr uint8_t kIcmpProtocol = 1;
@@ -36,6 +37,7 @@ pcpp::IPv4Layer* NatService::applyNat(const NatSession& session, pcpp::IPv4Layer
     auto protocol = ipLayerPacket->getIPv4Header()->protocol;
 
     bool translated = false;
+    std::ostringstream log_stream;
 
     if (session.isSourceNat()) {
         if (src_ip == session.getInternalIp() && dst_ip == session.getExternalIp()) {
@@ -50,6 +52,8 @@ pcpp::IPv4Layer* NatService::applyNat(const NatSession& session, pcpp::IPv4Layer
                 updateIcmpIdentifier(ipLayerPacket, session.getNatPort());
             }
             translated = true;
+            log_stream << "SNAT outbound "
+                       << src_ip.toString() << " -> " << session.getNatIp().toString();
         } else if (src_ip == session.getExternalIp() && dst_ip == session.getNatIp()) {
             ipLayerPacket->setDstIPv4Address(session.getInternalIp());
             if (next_layer && next_layer->getProtocol() == pcpp::TCP) {
@@ -62,11 +66,43 @@ pcpp::IPv4Layer* NatService::applyNat(const NatSession& session, pcpp::IPv4Layer
                 updateIcmpIdentifier(ipLayerPacket, session.getInternalPort());
             }
             translated = true;
+            log_stream << "SNAT inbound "
+                       << dst_ip.toString() << " -> " << session.getInternalIp().toString();
+        }
+    } else {
+        if (dst_ip == session.getExternalIp()) {
+            ipLayerPacket->setDstIPv4Address(session.getNatIp());
+            if (next_layer && next_layer->getProtocol() == pcpp::TCP) {
+                auto* tcpLayer = static_cast<pcpp::TcpLayer*>(next_layer);
+                tcpLayer->getTcpHeader()->portDst = htons(session.getNatPort());
+            } else if (next_layer && next_layer->getProtocol() == pcpp::UDP) {
+                auto* udpLayer = static_cast<pcpp::UdpLayer*>(next_layer);
+                udpLayer->getUdpHeader()->portDst = htons(session.getNatPort());
+            } else if (protocol == kIcmpProtocol) {
+                updateIcmpIdentifier(ipLayerPacket, session.getNatPort());
+            }
+            translated = true;
+            log_stream << "DNAT inbound "
+                       << dst_ip.toString() << " -> " << session.getNatIp().toString();
+        } else if (src_ip == session.getNatIp()) {
+            ipLayerPacket->setSrcIPv4Address(session.getExternalIp());
+            if (next_layer && next_layer->getProtocol() == pcpp::TCP) {
+                auto* tcpLayer = static_cast<pcpp::TcpLayer*>(next_layer);
+                tcpLayer->getTcpHeader()->portSrc = htons(session.getExternalPort());
+            } else if (next_layer && next_layer->getProtocol() == pcpp::UDP) {
+                auto* udpLayer = static_cast<pcpp::UdpLayer*>(next_layer);
+                udpLayer->getUdpHeader()->portSrc = htons(session.getExternalPort());
+            } else if (protocol == kIcmpProtocol) {
+                updateIcmpIdentifier(ipLayerPacket, session.getExternalPort());
+            }
+            translated = true;
+            log_stream << "DNAT outbound "
+                       << src_ip.toString() << " -> " << session.getExternalIp().toString();
         }
     }
 
     if (translated) {
-        std::cout << "[NAT] Applied translation for session." << std::endl;
+        Logging::logLine("[NAT]", log_stream.str());
     }
     return ipLayerPacket;
 }
