@@ -22,6 +22,29 @@ Session* NatSessionTable::findSession(SessionFlowKey const& key)
     return &it->second;
 }
 
+NatSession* NatSessionTable::findByNatMapping(
+    const pcpp::IPv4Address& nat_ip,
+    uint16_t nat_port,
+    const pcpp::IPv4Address& external_ip,
+    uint16_t external_port
+)
+{
+    for (auto& entry : nat_sessions) {
+        auto& session = entry.second;
+        const auto& flow = session.getSourceToDestinationFlow();
+        if (!session.isSourceNat()) {
+            continue;
+        }
+        if (session.getNatIp() == nat_ip &&
+            session.getNatPort() == nat_port &&
+            flow.external_ip == external_ip &&
+            flow.external_port == external_port) {
+            return &session;
+        }
+    }
+    return nullptr;
+}
+
 void NatSessionTable::eraseSession(SessionFlowKey const& key)
 {
     nat_sessions.erase(key);
@@ -64,7 +87,7 @@ NatSession* NatState::getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Ad
         return existing;
     }
     auto port = ports.acquire_free_port_number().value_or(0);
-    NatSession session(external_ip, key.src_ip, key.src_port, key.dst_ip, key.dst_port, external_ip, port, true);
+    NatSession session(key.src_ip, key.src_port, key.dst_ip, key.dst_port, external_ip, port, true, false);
     auto& stored = table.createSession(key, std::move(session));
     return static_cast<NatSession*>(&stored);
 }

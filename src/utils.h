@@ -8,6 +8,7 @@
 #include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/IPv4Layer.h"
+#include "pcapplusplus/TcpLayer.h"
 #include <type_traits>
 #include <vector>
 #include "../include/configuration/Config.h"
@@ -31,7 +32,9 @@ T matchBasedOnObject(
                 return candidate;
             }
         } else if constexpr (std::is_same_v<C, Session> && std::is_same_v<T, NatPolicy>) {
-            return candidate;
+            if (candidate.doesMatchSession(*c)) {
+                return candidate;
+            }
         }
     }
 
@@ -71,7 +74,9 @@ NatSession createOrGetNatSession(
    NatSessionTable &decryptionSessionTable,
    const SessionFlowKey& key,
    Session* session,
-   NatPolicy nat_policy
+   const IPv4Layer* ipLayerPacket,
+   const TcpLayer* tcpLayerPacket,
+   const NatPolicy& nat_policy
 );
 bool isNotEncryptedSession(Session *session);
 

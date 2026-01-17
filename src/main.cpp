@@ -50,30 +50,6 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     Packet packet(rawPacket);
 
-    // Need Ethernet for L2 forwarding
-    IPv4Layer* ipLayerPacket = packet.getLayerOfType<IPv4Layer>();
-    TcpLayer* tcpLayerPacket = packet.getLayerOfType<TcpLayer>();
-
-    auto security_policy = matchBasedOnObject<IPv4Layer, SecurityPolicy>(
-        ipLayerPacket,
-        configuration.security_policies
-    );
-    if (!security_policy.getAllowPacket()) return;
-    SessionFlowKey key = getSessionFlowKey(ipLayerPacket, tcpLayerPacket);
-
-    Session* session = createOrGetSession(
-     sessionTable,
-        key,
-        ipLayerPacket,
-        tcpLayerPacket,
-        inDev
-    );
-
-
-    auto nat_policy = matchBasedOnObject<Session, NatPolicy >(
-        session,
-        configuration.nat_policies
-    );
     auto* eth = packet.getLayerOfType<EthLayer>();
     if (!eth)
         return;
@@ -92,15 +68,45 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
         return;
     }
 
-
     if (!packet.isPacketOfType(IPv4))
         return;
 
+    // Need IPv4/TCP for session tracking + NAT
+    IPv4Layer* ipLayerPacket = packet.getLayerOfType<IPv4Layer>();
+    if (!ipLayerPacket) {
+        return;
+    }
+    TcpLayer* tcpLayerPacket = packet.getLayerOfType<TcpLayer>();
+    if (!tcpLayerPacket) {
+        return;
+    }
+
+    auto security_policy = matchBasedOnObject<IPv4Layer, SecurityPolicy>(
+        ipLayerPacket,
+        configuration.security_policies
+    );
+    if (!security_policy.getAllowPacket()) return;
+    SessionFlowKey key = getSessionFlowKey(ipLayerPacket, tcpLayerPacket);
+
+    Session* session = createOrGetSession(
+        sessionTable,
+        key,
+        ipLayerPacket,
+        tcpLayerPacket,
+        inDev
+    );
+
+    auto nat_policy = matchBasedOnObject<Session, NatPolicy >(
+        session,
+        configuration.nat_policies
+    );
 
     NatSession nat_session = createOrGetNatSession(
         natSessionTable,
         key,
         session,
+        ipLayerPacket,
+        tcpLayerPacket,
         nat_policy
     );
     IPv4Layer* translated_packet = natService.applyNat(nat_session, ipLayerPacket);
