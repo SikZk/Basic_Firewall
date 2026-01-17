@@ -82,8 +82,8 @@ void Config::parseNatPolicy(const boost::json::value& object)
 
         auto from_obj = obj.at("from").as_object();
         auto to_obj = obj.at("to").as_object();
-        auto network_from = std::string(from_obj.at("network").as_string());
-        auto network_to = std::string(to_obj.at("network").as_string());
+        std::pmr::string network_from = std::string(from_obj.at("network").as_string());
+        std::pmr::string network_to = std::string(to_obj.at("network").as_string());
 
         auto parseMask = [](const boost::json::value& value) -> uint32_t {
             if (value.is_int64()) {
@@ -124,8 +124,8 @@ void Config::parseNatPolicy(const boost::json::value& object)
             dest_port = static_cast<uint16_t>(obj.at("dest_port").as_int64());
         }
 
-        std::string translated_source_ip = "0.0.0.0";
-        std::string translated_destination_ip = "0.0.0.0";
+        std::pmr::string translated_source_ip = "0.0.0.0";
+        std::pmr::string translated_destination_ip = "0.0.0.0";
         if (obj.contains("translated_source_ip")) {
             translated_source_ip = std::string(obj.at("translated_source_ip").as_string());
         }
