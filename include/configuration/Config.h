@@ -16,6 +16,7 @@ class Config {
         std::vector<NatPolicy> nat_policies;
         std::vector<std::string> malware_hashes;
         RoutingTable routing_table;
+        std::vector<std::string> interface_names;
         std::pmr::string configuration_file_path;
 
         Config(std::pmr::string file_path)

@@ -16,6 +16,7 @@ class RoutingEngine {
         RoutingEngine();
         void routePacket(pcpp::IPv4Layer *ipLayerPacket, pcpp::IPv4Layer *originalIpLayerPacket);
         void loadInterfaces(std::vector<PcapLiveDevice*> interfaces);
+        void loadRoutingTable(const RoutingTable& table);
 };
 
 #endif //BASIC_FIREWALL_ROUTINGENGINE_H

@@ -18,6 +18,9 @@ private:
     mutable std::shared_mutex rw_lock;
 public:
     Session& createSession(SessionFlowKey const& key, DecryptionSession session);
+    Session* findSession(SessionFlowKey const& key);
+    void eraseSession(SessionFlowKey const& key);
+    bool doesSessionExist(const SessionFlowKey& key) const;
 
 };
 

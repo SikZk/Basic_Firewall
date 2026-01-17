@@ -6,6 +6,7 @@
 #define BASIC_FIREWALL_DLP_PROFILE_H
 #include "SecurityProfile.h"
 #include <regex>
+#include <vector>
 
 class DlpProfile : public SecurityProfile {
     private:
@@ -13,6 +14,7 @@ class DlpProfile : public SecurityProfile {
 
     public:
         explicit DlpProfile(const std::vector<std::string>& regex_patterns);
+        Action scan(Session* session, const pcpp::IPv4Layer& packet) override;
         Action scan(const DecryptionSession& session, pcpp::IPv4Layer ipv4_packet) override;
 };
 

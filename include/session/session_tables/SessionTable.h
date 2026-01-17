@@ -5,6 +5,7 @@
 #ifndef BASIC_FIREWALL_SESSIONTABLE_H
 #define BASIC_FIREWALL_SESSIONTABLE_H
 #include <boost/unordered/unordered_map_fwd.hpp>
+#include <pcapplusplus/TcpLayer.h>
 #include "../sessions/Session.h"
 
 class SessionTable {

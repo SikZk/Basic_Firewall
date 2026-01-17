@@ -8,6 +8,8 @@
 #include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/IPv4Layer.h"
+#include <type_traits>
+#include <vector>
 #include "../include/configuration/Config.h"
 #include "../include/session/session_tables/DecryptionSessionTable.h"
 using namespace pcpp;
@@ -17,7 +19,36 @@ template <typename C, typename T>
 T matchBasedOnObject(
     C* c,
     std::vector<T>& data_to_match_object_to
-);
+)
+{
+    for (auto& candidate : data_to_match_object_to) {
+        if constexpr (std::is_same_v<C, IPv4Layer> && std::is_same_v<T, SecurityPolicy>) {
+            if (candidate.does_match_policy(*c)) {
+                return candidate;
+            }
+        } else if constexpr (std::is_same_v<C, Session> && std::is_same_v<T, DecryptionProfile>) {
+            if (candidate.doesMatchProfile(*c)) {
+                return candidate;
+            }
+        } else if constexpr (std::is_same_v<C, Session> && std::is_same_v<T, NatPolicy>) {
+            return candidate;
+        }
+    }
+
+    if (!data_to_match_object_to.empty()) {
+        return data_to_match_object_to.front();
+    }
+
+    if constexpr (std::is_same_v<T, SecurityPolicy>) {
+        return SecurityPolicy("0.0.0.0", 0, "0.0.0.0", 0, 0, 0, true, {});
+    } else if constexpr (std::is_same_v<T, DecryptionProfile>) {
+        return DecryptionProfile("default", "", "", "0.0.0.0", 0, "0.0.0.0", 0);
+    } else if constexpr (std::is_same_v<T, NatPolicy>) {
+        return NatPolicy("0.0.0.0", 0, "0.0.0.0", 0, 0, 0);
+    } else {
+        return T{};
+    }
+}
 
 SessionFlowKey getSessionFlowKey(
     const IPv4Layer* ipLayerPacket,

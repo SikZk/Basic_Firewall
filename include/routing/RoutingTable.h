@@ -4,6 +4,10 @@
 
 #ifndef BASIC_FIREWALL_ROUTING_TABLE_H
 #define BASIC_FIREWALL_ROUTING_TABLE_H
+#include <optional>
+#include <string>
+#include <vector>
+#include <pcapplusplus/IpAddress.h>
 struct RouteEntry {
     pcpp::IPv4Address network;
     pcpp::IPv4Address netmask;

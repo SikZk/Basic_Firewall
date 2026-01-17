@@ -57,7 +57,7 @@ struct SessionFlow {
 };
 
 class Session {
-    private:
+    protected:
         SessionFlow source_to_destination;
         SessionFlow destination_to_source;
         SessionState session_state;
@@ -81,8 +81,10 @@ class Session {
             uint16_t          destination_port
         );
         uint8_t* getData();
-        uint8_t getDataLength();
-        uint8_t appendData(uint8_t* new_data, uint8_t length);
+        size_t getDataLength();
+        void appendData(const uint8_t* new_data, size_t length);
+        const SessionFlow& getSourceToDestinationFlow() const;
+        const SessionFlow& getDestinationToSourceFlow() const;
 
 };
 

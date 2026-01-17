@@ -3,5 +3,19 @@
       "port1": "ens34",
       "port2": "ens37",
       "port3": "ens38"
-  }
+  },
+  "routes": [
+    {
+      "network": "0.0.0.0",
+      "mask": "0.0.0.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens37"
+    },
+    {
+      "network": "10.0.0.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens38"
+    }
+  ]
 }

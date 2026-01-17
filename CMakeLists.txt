@@ -21,6 +21,20 @@ add_executable(Basic_Firewall src/main.cpp
         src/decryption/DecryptionManager.cpp
         src/decryption/DecryptionProfile.cpp
         src/session/sessions/DecryptionSession.cpp
+        src/session/sessions/NatSession.cpp
+        src/session/session_tables/SessionTable.cpp
+        src/session/session_tables/DecryptionSessionTable.cpp
+        src/session/session_tables/NatSessionTable.cpp
+        src/policies/Policy.cpp
+        src/policies/SecurityPolicy.cpp
+        src/policies/NatPolicy.cpp
+        src/policies/NatService.cpp
+        src/routing/RoutingTable.cpp
+        src/routing/RoutingEngine.cpp
+        src/security_profiles/SecurityProfile.cpp
+        src/security_profiles/UrlFilteringProfile.cpp
+        src/security_profiles/AntimalwareProfile.cpp
+        src/security_profiles/DlpProfile.cpp
 )
 target_link_libraries(Basic_Firewall PRIVATE Boost::headers)
 target_include_directories(Basic_Firewall PRIVATE /usr/include/boost)

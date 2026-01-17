@@ -127,6 +127,7 @@ int main() {
 
     configuration.load();
     routingEngine.loadInterfaces(configuration.getCaptureInterfaces());
+    routingEngine.loadRoutingTable(configuration.routing_table);
 
     for (PcapLiveDevice* interface : configuration.getCaptureInterfaces()) {
         if (!interface->open()) return 1;

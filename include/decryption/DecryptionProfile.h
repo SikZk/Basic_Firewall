@@ -7,6 +7,10 @@
 
 
 #include <string>
+#include <pcapplusplus/IpAddress.h>
+#include <openssl/evp.h>
+#include <openssl/x509.h>
+#include "../session/sessions/Session.h"
 
 
 class DecryptionProfile {
