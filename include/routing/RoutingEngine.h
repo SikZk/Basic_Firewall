@@ -24,7 +24,7 @@ public:
 
     // Called from capture callback:
     void processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface);
-    void routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface);
+    void routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table);
 
 private:
     struct ArpEntry
@@ -33,10 +33,8 @@ private:
         std::chrono::steady_clock::time_point expiresAt;
     };
 
-    // per-interface ARP cache: ifName -> (ipInt -> entry)
     std::unordered_map<std::string, std::unordered_map<uint32_t, ArpEntry>> arpCache;
 
-    // pending frames waiting for ARP: ifName -> (nextHopIpInt -> list of raw ethernet frames)
     std::unordered_map<std::string, std::unordered_map<uint32_t, std::vector<std::vector<uint8_t>>>> pending;
 
     std::mutex mtx;

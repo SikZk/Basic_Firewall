@@ -30,11 +30,9 @@ static RoutingEngine routingEngine;
 static std::vector<PcapLiveDevice*> gInterfaces;
 
 
-static void exitProgram(int)
-{
+static void exitProgram(int) {
     stopSignal = 1;
-    for (auto* dev : gInterfaces)
-    {
+    for (auto* dev : gInterfaces) {
         if (dev && dev->isOpened())
             dev->stopCapture();
     }
@@ -44,95 +42,67 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 {
     if (!rawPacket || !inDev)
         return;
+
     Packet packet(rawPacket);
+    EthLayer* eth = packet.getLayerOfType<EthLayer>();
 
-    // Need Ethernet for L2 forwarding
-    IPv4Layer* ipLayerPacket = packet.getLayerOfType<IPv4Layer>();
-
-
-
-    auto* eth = packet.getLayerOfType<EthLayer>();
-    if (!eth)
-        return;
+    if (!eth) return;
 
     const MacAddress dstMac = eth->getDestMac();
     if (dstMac != inDev->getMacAddress() && dstMac != MacAddress::Broadcast)
         return;
-    // If we ever still see our injected frames, ignore
     if (eth->getSourceMac() == inDev->getMacAddress())
         return;
-
-    const auto destMac = eth->getDestMac();
-    if (destMac != inDev->getMacAddress() && destMac != pcpp::MacAddress::Broadcast)
+    if (dstMac != inDev->getMacAddress() && dstMac != pcpp::MacAddress::Broadcast)
         return;
-
-    if (packet.isPacketOfType(ARP))
-    {
+    if (packet.isPacketOfType(ARP)){
         routingEngine.processArpPacket(packet, inDev);
         return;
     }
-
-
     if (!packet.isPacketOfType(IPv4))
         return;
 
-
-    routingEngine.routePacket(packet, inDev);
+    routingEngine.routePacket(packet, inDev, configuration.routing_table);
 }
 
 int main()
 {
-    std::printf("router start\n");
-
+    std::cout << "router start\n";
     std::signal(SIGINT, exitProgram);
     std::signal(SIGTERM, exitProgram);
 
     configuration.load();
 
-    // Load and DEDUP interfaces (avoid capturing the same interface multiple times)
-    {
-        auto ifs = configuration.getCaptureInterfaces();
-        std::unordered_set<std::string> seen;
-        gInterfaces.clear();
-        gInterfaces.reserve(ifs.size());
+    auto interfaces  = configuration.getCaptureInterfaces();
+    std::unordered_set<std::string> seen_interfaces;
+    gInterfaces.clear();
+    gInterfaces.reserve(interfaces.size());
 
-        for (auto* dev : ifs)
-        {
-            if (!dev) continue;
-            if (dev->getLoopback()) continue; // generally avoid "lo"
+    for (PcapLiveDevice* interface : interfaces) {
+        if (!interface) continue;
+        if (interface->getLoopback()) continue;
 
-            const std::string name = dev->getName();
-            if (seen.insert(name).second)
-                gInterfaces.push_back(dev);
-        }
+        const std::string name = interface->getName();
+        if (seen_interfaces.insert(name).second)
+            gInterfaces.push_back(interface);
     }
 
     routingEngine.loadInterfaces(gInterfaces);
-    routingEngine.loadRoutingTable(configuration.routing_table);
 
-    for (PcapLiveDevice* dev : gInterfaces)
-    {
-        // Open with explicit configuration: capture IN only (prevents out/loop duplicates)
+    for (PcapLiveDevice* dev : gInterfaces) {
         PcapLiveDevice::DeviceConfiguration cfg;
         cfg.mode = PcapLiveDevice::Promiscuous;
-        cfg.direction = PcapLiveDevice::PCPP_IN;   // CRITICAL: inbound only :contentReference[oaicite:1]{index=1}
+        cfg.direction = PcapLiveDevice::PCPP_IN;
         cfg.snapshotLength = 65535;
 
-        if (!dev->open(cfg))
-        {
+        if (!dev->open(cfg)) {
             std::cerr << "Failed to open: " << dev->getName() << std::endl;
             return 1;
         }
-
-        // Optional: reduce work. You can keep your MAC filter if you want,
-        // but it should no longer be necessary once direction=PCPP_IN.
-        if (!dev->setFilter("arp or ip"))
-        {
+        if (!dev->setFilter("arp or ip")) {
             std::cerr << "Failed to set filter on " << dev->getName() << std::endl;
         }
-
-        if (!dev->startCapture(onPacketArrives, nullptr))
-        {
+        if (!dev->startCapture(onPacketArrives, nullptr)) {
             std::cerr << "Failed to start capture: " << dev->getName() << std::endl;
             dev->close();
             return 1;
@@ -147,8 +117,7 @@ int main()
     while (!stopSignal)
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    for (PcapLiveDevice* dev : gInterfaces)
-    {
+    for (PcapLiveDevice* dev : gInterfaces) {
         if (dev && dev->isOpened())
             dev->close();
     }
