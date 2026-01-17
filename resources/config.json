@@ -23,5 +23,29 @@
       "gateway": "0.0.0.0",
       "interface": "ens34"
     }
-  ]
+  ],
+  "nat": {
+    "port_pool": {
+      "start": 10000,
+      "end": 20000
+    },
+    "policies": [
+      {
+        "type": "source",
+        "from": "10.1.0.0",
+        "from_mask": 24,
+        "to": "192.168.1.0",
+        "to_mask": 24,
+        "translated_source_ip": "192.168.1.29"
+      },
+      {
+        "type": "source",
+        "from": "10.2.0.0",
+        "from_mask": 24,
+        "to": "192.168.1.0",
+        "to_mask": 24,
+        "translated_source_ip": "192.168.1.29"
+      }
+    ]
+  }
 }

@@ -62,7 +62,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     if (!packet.isPacketOfType(IPv4))
         return;
 
-    routingEngine.routePacket(packet, inDev, configuration.routing_table);
+    routingEngine.routePacket(packet, inDev, configuration.routing_table, configuration.nat_policies);
 }
 
 int main()
