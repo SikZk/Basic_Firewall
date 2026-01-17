@@ -11,7 +11,7 @@ bool matchesNetwork(const pcpp::IPv4Address& address, const pcpp::IPv4Address& n
 }
 } // namespace
 
-bool Policy::does_match_policy(pcpp::IPv4Layer ipv4_packet)
+bool Policy::does_match_policy(const pcpp::IPv4Layer& ipv4_packet) const
 {
     const auto src = ipv4_packet.getSrcIPv4Address();
     const auto dst = ipv4_packet.getDstIPv4Address();

@@ -13,11 +13,6 @@ NatState& NatPolicy::getNatState()
     return nat_state;
 }
 
-pcpp::IPv4Layer NatPolicy::applyNat(pcpp::IPv4Layer* ipLayer)
-{
-    firewall::logging::Logger::info("[NAT] No-op NAT applied.");
-    return *ipLayer;
-}
 
 NatType NatPolicy::getNatType() const
 {
