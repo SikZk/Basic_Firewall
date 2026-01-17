@@ -8,9 +8,63 @@
 #include "pcapplusplus/EthLayer.h"
 #include "pcapplusplus/ArpLayer.h"
 #include "pcapplusplus/SystemUtils.h"
+#include "pcapplusplus/TcpLayer.h"
+#include "pcapplusplus/UdpLayer.h"
+#include <arpa/inet.h>
 
 RoutingEngine::RoutingEngine() = default;
 static std::unordered_set<uint64_t> myMacAddresses;
+constexpr uint8_t kIcmpProtocol = 1;
+
+struct TransportFlow
+{
+    uint16_t src_port{0};
+    uint16_t dst_port{0};
+    pcpp::ProtocolType protocol{pcpp::UnknownProtocol};
+    bool has_ports{false};
+    bool is_icmp{false};
+};
+
+TransportFlow getTransportFlow(pcpp::Packet& packet, pcpp::IPv4Layer* ipLayer)
+{
+    if (auto* tcp = packet.getLayerOfType<pcpp::TcpLayer>()) {
+        return {
+            ntohs(tcp->getTcpHeader()->portSrc),
+            ntohs(tcp->getTcpHeader()->portDst),
+            pcpp::TCP,
+            true,
+            false
+        };
+    }
+    if (auto* udp = packet.getLayerOfType<pcpp::UdpLayer>()) {
+        return {
+            ntohs(udp->getUdpHeader()->portSrc),
+            ntohs(udp->getUdpHeader()->portDst),
+            pcpp::UDP,
+            true,
+            false
+        };
+    }
+
+    TransportFlow flow;
+    if (ipLayer) {
+        flow.protocol = static_cast<pcpp::ProtocolType>(ipLayer->getIPv4Header()->protocol);
+        if (ipLayer->getIPv4Header()->protocol == kIcmpProtocol) {
+            auto* payload = ipLayer->getLayerPayload();
+            size_t payloadSize = ipLayer->getLayerPayloadSize();
+            if (payload && payloadSize >= 6) {
+                auto* id_ptr = reinterpret_cast<uint16_t*>(payload + 4);
+                uint16_t id = ntohs(*id_ptr);
+                flow.src_port = id;
+                flow.dst_port = id;
+                flow.protocol = pcpp::ICMP;
+                flow.has_ports = true;
+                flow.is_icmp = true;
+            }
+        }
+    }
+    return flow;
+}
 
 void RoutingEngine::loadInterfaces(std::vector<pcpp::PcapLiveDevice*> ifs) {
     interfaces = std::move(ifs);
@@ -165,7 +219,12 @@ void RoutingEngine::processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice*
     flushPending(ifName, arp->getSenderIpAddr(), arp->getSenderMacAddress());
 }
 
-void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table)
+void RoutingEngine::routePacket(
+    pcpp::Packet& packet,
+    pcpp::PcapLiveDevice* inInterface,
+    RoutingTable& routing_table,
+    const std::vector<NatPolicy>& nat_policies
+)
 {
     auto* eth = packet.getLayerOfType<pcpp::EthLayer>();
     auto* ip  = packet.getLayerOfType<pcpp::IPv4Layer>();
@@ -183,6 +242,74 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
 
     if (inInterface) {
         learnArp(inInterface->getName(), ip->getSrcIPv4Address(), eth->getSourceMac());
+    }
+
+    auto flow = getTransportFlow(packet, ip);
+    SessionFlowKey key{
+        ip->getSrcIPv4Address(),
+        flow.src_port,
+        ip->getDstIPv4Address(),
+        flow.dst_port,
+        flow.protocol
+    };
+
+    if (!session_table_.doesSessionExist(key)) {
+        Session session(
+            inInterface ? inInterface->getIPv4Address() : pcpp::IPv4Address::Zero,
+            inInterface ? inInterface->getIPv4Address() : pcpp::IPv4Address::Zero,
+            ip->getSrcIPv4Address(),
+            flow.src_port,
+            ip->getDstIPv4Address(),
+            flow.dst_port
+        );
+        session_table_.createSession(key, std::move(session));
+    }
+
+    auto& nat_state = NatPolicy::getNatState();
+    auto* nat_session = static_cast<NatSession*>(nat_state.table.findSession(key));
+
+    if (!nat_session) {
+        for (const auto& policy : nat_policies) {
+            if (!policy.does_match_policy(*ip)) {
+                continue;
+            }
+            if (policy.getNatType() == NatType::Source) {
+                auto nat_port_opt = nat_state.ports.acquire_free_port_number();
+                if (!nat_port_opt.has_value()) {
+                    break;
+                }
+                const uint16_t nat_port = *nat_port_opt;
+                const auto nat_ip = policy.getTranslatedSourceIp();
+
+                NatSession session(
+                    nat_ip,
+                    ip->getSrcIPv4Address(),
+                    flow.src_port,
+                    ip->getDstIPv4Address(),
+                    flow.dst_port,
+                    nat_ip,
+                    nat_port,
+                    true
+                );
+
+                nat_state.table.createSession(key, session);
+
+                SessionFlowKey reverse_key{
+                    ip->getDstIPv4Address(),
+                    flow.is_icmp ? nat_port : flow.dst_port,
+                    nat_ip,
+                    nat_port,
+                    flow.protocol
+                };
+                nat_state.table.createSession(reverse_key, session);
+                nat_session = static_cast<NatSession*>(nat_state.table.findSession(key));
+            }
+            break;
+        }
+    }
+
+    if (nat_session) {
+        nat_service_.applyNat(*nat_session, ip);
     }
 
     const pcpp::IPv4Address dst = ip->getDstIPv4Address();

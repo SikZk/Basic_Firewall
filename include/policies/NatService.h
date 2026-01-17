@@ -12,7 +12,7 @@
 class NatService {
 
     public:
-        pcpp::IPv4Layer* applyNat(NatSession session, pcpp::IPv4Layer* ipLayerPacket);
+        pcpp::IPv4Layer* applyNat(const NatSession& session, pcpp::IPv4Layer* ipLayerPacket);
 };
 
 
