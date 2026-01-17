@@ -82,8 +82,11 @@ void Config::parseNatPolicy(const boost::json::value& object)
 
         auto from_obj = obj.at("from").as_object();
         auto to_obj = obj.at("to").as_object();
-        std::pmr::string network_from = std::string(from_obj.at("network").as_string());
-        std::pmr::string network_to = std::string(to_obj.at("network").as_string());
+        const auto& from_net = from_obj.at("network").as_string();
+        const auto& to_net   = to_obj.at("network").as_string();
+
+        std::pmr::string network_from{from_net.data(), from_net.size()};
+        std::pmr::string network_to  {to_net.data(),   to_net.size()};
 
         auto parseMask = [](const boost::json::value& value) -> uint32_t {
             if (value.is_int64()) {

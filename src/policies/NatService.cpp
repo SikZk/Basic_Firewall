@@ -34,7 +34,7 @@ pcpp::IPv4Layer* NatService::applyNat(NatSession session, pcpp::IPv4Layer* ipLay
         } else if (udpLayer) {
             udpLayer->getUdpHeader()->portSrc = htons(session.getNatPort());
         }
-        std::cout << "[NAT] Applied source NAT to " << session.getNatIp().toString() << std::endl;
+        std::cout << "[NAT] Applied source NAT to " << session.getNatIp().toString() << " from: " << ipLayerPacket->getSrcIPv4Address() << std::endl;
         return ipLayerPacket;
     }
 
