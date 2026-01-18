@@ -32,5 +32,5 @@ public:
 
     virtual ~Policy() = default;
 
-    bool does_match_policy(pcpp::IPv4Layer ipv4_packet);
+    bool does_match_policy(const pcpp::IPv4Layer& ipv4_packet) const;
 };
