@@ -3,6 +3,7 @@
 #include <fstream>
 #include <boost/json/src.hpp>
 #include <iostream>
+#include <memory>
 #include <sstream>
 
 void Config::load()
@@ -49,10 +50,11 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
         std::string action = obj.at("action").as_string().c_str();
 
         bool allow = action == "allow";
+        std::vector<std::shared_ptr<SecurityProfile>> profiles;
 
-        security_policies.emplace_back(
-            src_net, src_mask, dst_net, dst_mask, src_port, dst_port, allow, std::vector<std::shared_ptr<SecurityProfile>>{}
-        );
+        security_policies.push_back(SecurityPolicy(
+            src_net, src_mask, dst_net, dst_mask, src_port, dst_port, allow, std::move(profiles)
+        ));
     }
 }
 
