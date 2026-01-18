@@ -27,4 +27,5 @@ public:
         profiles(std::move(profiles))
     {}
     std::vector<std::shared_ptr<SecurityProfile>> evaluate_security_profiles(const pcpp::IPv4Layer& ipLayer);
+    bool getAllowPacket() const;
 };

@@ -9,7 +9,7 @@ std::vector<std::shared_ptr<SecurityProfile>> SecurityPolicy::evaluate_security_
     return security_profiles;
 }
 
-bool SecurityPolicy::getAllowPacket()
+bool SecurityPolicy::getAllowPacket() const
 {
-    return allow_packet;
+    return allow;
 }

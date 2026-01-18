@@ -32,6 +32,29 @@ std::vector<pcpp::PcapLiveDevice*> Config::getCaptureInterfaces()
 void Config::parseDecryptionProfile(const boost::json::value& object) { (void)object; };
 
 // --- Parsowanie Security Policy z JSON ---
+void Config::parseSecurityPolicy(const boost::json::value& object)
+{
+    if (!object.is_array()) return;
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string src_net = obj.at("src_network").as_string().c_str();
+        uint32_t src_mask = obj.at("src_mask").as_int64();
+        std::string dst_net = obj.at("dest_network").as_string().c_str();
+        uint32_t dst_mask = obj.at("dest_mask").as_int64();
+        uint16_t src_port = static_cast<uint16_t>(obj.at("src_port").as_int64());
+        uint16_t dst_port = static_cast<uint16_t>(obj.at("dest_port").as_int64());
+        std::string action = obj.at("action").as_string().c_str();
+
+        bool allow = action == "allow";
+
+        security_policies.emplace_back(
+            src_net, src_mask, dst_net, dst_mask, src_port, dst_port, allow, std::vector<std::shared_ptr<SecurityProfile>>{}
+        );
+    }
+}
 
 // --- Parsowanie NAT Policy z JSON ---
 void Config::parseNatPolicy(const boost::json::value& object) {
@@ -88,6 +111,7 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("routes")) parseRoutingTable(obj.at("routes"));
         // Dodane parsowanie nowych sekcji
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
+        if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
 
     } catch (...) {}
 };
