@@ -136,6 +136,35 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
                   << " [Protocol: " << (int)key.protocol << "]" << std::endl;
     }
 
+    if (!configuration.security_policies.empty()) {
+        bool matched = false;
+        bool allowed = false;
+        for (const auto& policy : configuration.security_policies) {
+            if (policy.does_match_policy(*ipLayer)) {
+                matched = true;
+                allowed = policy.allow;
+                break;
+            }
+        }
+
+        if (!matched || !allowed) {
+            if (debug) {
+                std::cout << "[DEBUG] Security policy "
+                          << (matched ? "DENY" : "NO MATCH (DENY)")
+                          << " for " << ipLayer->getSrcIPv4Address().toString()
+                          << " -> " << ipLayer->getDstIPv4Address().toString()
+                          << std::endl;
+            }
+            return;
+        }
+        if (debug) {
+            std::cout << "[DEBUG] Security policy ALLOW for "
+                      << ipLayer->getSrcIPv4Address().toString()
+                      << " -> " << ipLayer->getDstIPv4Address().toString()
+                      << std::endl;
+        }
+    }
+
     NatState& state = NatPolicy::nat_state;
 
     // 1. Inbound (Return Traffic)

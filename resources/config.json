@@ -42,6 +42,15 @@
   ],
   "security_policies": [
     {
+      "src_network": "10.1.0.0",
+      "src_mask": 24,
+      "dest_network": "1.1.1.1",
+      "dest_mask": 32,
+      "src_port": 0,
+      "dest_port": 0,
+      "action": "deny"
+    },
+    {
       "src_network": "0.0.0.0",
       "src_mask": 0,
       "dest_network": "0.0.0.0",
