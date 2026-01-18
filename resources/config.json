@@ -1,8 +1,8 @@
 {
   "interfaces": {
-
-      "port2": "ens37",
-      "port3": "ens38"
+    "port1": "ens34",
+    "port2": "ens37",
+    "port3": "ens38"
   },
   "routes": [
     {
@@ -22,6 +22,33 @@
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
       "interface": "ens34"
+    },
+    {
+      "network": "0.0.0.0",
+      "mask": "0.0.0.0",
+      "gateway": "192.168.1.2",
+      "interface": "ens34"
+    }
+  ],
+  "nat_policies": [
+    {
+      "src_network": "10.2.0.0",
+      "src_mask": 24,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "src_port": 0,
+      "dest_port": 0
+    }
+  ],
+  "security_policies": [
+    {
+      "src_network": "0.0.0.0",
+      "src_mask": 0,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "src_port": 0,
+      "dest_port": 0,
+      "action": "allow"
     }
   ]
 }

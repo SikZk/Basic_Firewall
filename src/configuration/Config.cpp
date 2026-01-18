@@ -9,39 +9,11 @@ void Config::load()
 {
     loadFromFile("../resources/config.json");
 
-    if (security_policies.empty()) {
-        security_policies.emplace_back(
-            "0.0.0.0",
-            0,
-            "0.0.0.0",
-            0,
-            0,
-            0,
-            true,
-            std::vector<std::shared_ptr<SecurityProfile>>{}
-        );
-    }
-
+    // Zabezpieczenie: jeśli w pliku nie było profili deszyfracji, dodaj domyślny,
+    // żeby program się nie wywalił.
     if (decryption_profiles.empty()) {
         decryption_profiles.emplace_back(
-            "default",
-            "",
-            "",
-            "0.0.0.0",
-            0,
-            "0.0.0.0",
-            0
-        );
-    }
-
-    if (nat_policies.empty()) {
-        nat_policies.emplace_back(
-            "0.0.0.0",
-            0,
-            "0.0.0.0",
-            0,
-            0,
-            0
+            "default", "", "", "0.0.0.0", 0, "0.0.0.0", 0
         );
     }
 }
@@ -54,47 +26,49 @@ std::vector<pcpp::PcapLiveDevice*> Config::getCaptureInterfaces()
             vector.push_back(device);
         }
     }
-
     return vector;
 }
 
-void Config::parseDecryptionProfile(const boost::json::value& object)
-{
-    (void)object;
-    std::cout << "[Config] Skipping decryption profile parsing (no-op)." << std::endl;
-};
-void Config::parseSecurityPolicy(const boost::json::value& object)
-{
-    (void)object;
-    std::cout << "[Config] Skipping security policy parsing (no-op)." << std::endl;
-};
-void Config::parseNatPolicy(const boost::json::value& object)
-{
-    (void)object;
-    std::cout << "[Config] Skipping NAT policy parsing (no-op)." << std::endl;
-};
-void Config::parseRoutingTable(const boost::json::value& object)
-{
-    if (!object.is_array()) {
-        return;
-    }
+void Config::parseDecryptionProfile(const boost::json::value& object) { (void)object; };
+
+// --- Parsowanie Security Policy z JSON ---
+
+// --- Parsowanie NAT Policy z JSON ---
+void Config::parseNatPolicy(const boost::json::value& object) {
+    if (!object.is_array()) return;
+
     for (const auto& entry : object.as_array()) {
-        if (!entry.is_object()) {
-            continue;
-        }
+        if (!entry.is_object()) continue;
         const auto& obj = entry.as_object();
-        auto network = std::string(obj.at("network").as_string());
-        auto mask = std::string(obj.at("mask").as_string());
-        auto gateway = std::string(obj.at("gateway").as_string());
-        auto iface = std::string(obj.at("interface").as_string());
-        routing_table.addRoute(
-            pcpp::IPv4Address(network),
-            pcpp::IPv4Address(mask),
-            pcpp::IPv4Address(gateway),
-            iface
+
+        std::string src_net = obj.at("src_network").as_string().c_str();
+        uint32_t src_mask = obj.at("src_mask").as_int64();
+        std::string dst_net = obj.at("dest_network").as_string().c_str();
+        uint32_t dst_mask = obj.at("dest_mask").as_int64();
+        uint16_t src_port = (uint16_t)obj.at("src_port").as_int64();
+        uint16_t dst_port = (uint16_t)obj.at("dest_port").as_int64();
+
+        nat_policies.emplace_back(
+            src_net, src_mask, dst_net, dst_mask, src_port, dst_port
         );
     }
 };
+
+void Config::parseRoutingTable(const boost::json::value& object)
+{
+    if (!object.is_array()) return;
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+        routing_table.addRoute(
+            pcpp::IPv4Address(std::string(obj.at("network").as_string())),
+            pcpp::IPv4Address(std::string(obj.at("mask").as_string())),
+            pcpp::IPv4Address(std::string(obj.at("gateway").as_string())),
+            std::string(obj.at("interface").as_string())
+        );
+    }
+};
+
 void Config::loadFromFile(const std::string& filepath)
 {
     std::ifstream file(filepath);
@@ -104,31 +78,31 @@ void Config::loadFromFile(const std::string& filepath)
     }
     std::stringstream buffer;
     buffer << file.rdbuf();
-    auto data = boost::json::parse(buffer.str());
 
-    if (!data.is_object()) {
-        return;
-    }
-    const auto& obj = data.as_object();
-    if (obj.contains("interfaces")) {
-        parseInterfaces(obj.at("interfaces"));
-    }
-    if (obj.contains("routes")) {
-        parseRoutingTable(obj.at("routes"));
-    }
+    try {
+        auto data = boost::json::parse(buffer.str());
+        if (!data.is_object()) return;
+        const auto& obj = data.as_object();
+
+        if (obj.contains("interfaces")) parseInterfaces(obj.at("interfaces"));
+        if (obj.contains("routes")) parseRoutingTable(obj.at("routes"));
+        // Dodane parsowanie nowych sekcji
+        if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
+
+    } catch (...) {}
 };
+
 void Config::parseInterfaces(const boost::json::value& object)
 {
-    if (!object.is_object()) {
-        return;
-    }
+    if (!object.is_object()) return;
     interface_names.clear();
     for (const auto& item : object.as_object()) {
         interface_names.emplace_back(item.value().as_string());
     }
+    // Zabezpieczenie: upewnij się, że ens34 jest na liście, jeśli user zapomni
+    bool hasEns34 = false;
+    for(const auto& s : interface_names) if(s == "ens34") hasEns34 = true;
+    if(!hasEns34) interface_names.push_back("ens34");
 };
-void Config::loadMalwareDatabase(const boost::json::value& object)
-{
-    (void)object;
-    std::cout << "[Config] Skipping malware DB load (no-op)." << std::endl;
-};
+
+void Config::loadMalwareDatabase(const boost::json::value& object) { (void)object; };
