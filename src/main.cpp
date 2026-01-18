@@ -50,7 +50,7 @@ static RoutingEngine routingEngine;
 static std::vector<PcapLiveDevice*> gInterfaces;
 static NatService natService;
 
-const IPv4Address EXTERNAL_IP("192.168.1.29");
+const IPv4Address EXTERNAL_IP("192.168.1.39");
 
 static void exitProgram(int) {
     stopSignal = 1;
@@ -108,7 +108,15 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     EthLayer* eth = packet.getLayerOfType<EthLayer>();
     if (!eth) return;
 
-    if (eth->getDestMac() != inDev->getMacAddress() && eth->getDestMac() != MacAddress::Broadcast) return;
+    pcpp::MacAddress destMac = eth->getDestMac();
+    pcpp::MacAddress myMac = inDev->getMacAddress();
+
+    // Jeśli to NIE jest do nas I NIE jest to Broadcast -> Drop
+    if (destMac != myMac && destMac != pcpp::MacAddress::Broadcast) {
+        // Opcjonalnie: Debug log, żebyś widział co odrzucasz
+        // std::cout << "[DROP] Ignoring noise packet not for me. Dst: " << destMac.toString() << std::endl;
+        return;
+    }
     if (eth->getSourceMac() == inDev->getMacAddress()) return;
 
     if (packet.isPacketOfType(ARP)){

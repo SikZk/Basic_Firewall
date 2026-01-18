@@ -179,8 +179,21 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     auto* ip  = packet.getLayerOfType<pcpp::IPv4Layer>();
     if (!eth || !ip) return;
 
-    // 1. Find Route
+    // --- FIX: OCHRONA PRZED ROUTOWANIEM DO SAMEGO SIEBIE ---
+    // Sprawdzamy, czy IP docelowe to IP któregokolwiek z naszych interfejsów.
+    // Jeśli tak, przerywamy. Nie chcemy wysyłać pakietu "do siebie" w świat.
     const pcpp::IPv4Address dst = ip->getDstIPv4Address();
+
+    for (const auto* dev : interfaces) {
+        if (dev->getIPv4Address() == dst) {
+            // To jest pakiet do mnie (lokalny). Nie routuj go.
+            // System operacyjny (Linux) go odbierze, a my jako Router User-Space go ignorujemy.
+            return;
+        }
+    }
+    // -------------------------------------------------------
+
+    // 1. Znajdź trasę
     auto route = routing_table.findRoute(dst);
 
     if (!route.has_value()) {
@@ -188,11 +201,17 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
         return;
     }
 
+    // [DALSZA CZĘŚĆ FUNKCJI BEZ ZMIAN...]
+
     // 2. Determine Next Hop IP
-    // If gateway is set (e.g. 192.168.1.2), use it. Otherwise assume Direct Connected (dst IP).
     pcpp::IPv4Address nextHop = dst;
     if (route->gateway != pcpp::IPv4Address("0.0.0.0")) {
         nextHop = route->gateway;
+    }
+
+    // Zabezpieczenie dodatkowe: Jeśli z jakiegoś powodu NextHop to my sami -> STOP
+    if (findInterfaceByName(route->interfaceName)->getIPv4Address() == nextHop) {
+        return;
     }
 
     // 3. Find Output Interface
@@ -211,34 +230,32 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     // A. Check ARP Cache first
     auto macOpt = lookupArp(outInterface->getName(), nextHop);
 
-    // B. If missing, check STATIC MAPPING (The fix for your environment)
-    // if (!macOpt) {
-    //     if (outInterface->getName() == "ens34" && nextHop == pcpp::IPv4Address("192.168.1.2")) {
-    //         // Gateway
-    //         macOpt = pcpp::MacAddress("00:86:9c:27:67:11");
-    //         learnArp("ens34", nextHop, *macOpt); // Learn it to cache
-    //     }
-    //     else if (nextHop == pcpp::IPv4Address("10.1.0.2")) {
-    //         macOpt = pcpp::MacAddress("00:0c:29:7e:17:2a");
-    //         learnArp("ens37", nextHop, *macOpt);
-    //     }
-    //     else if (nextHop == pcpp::IPv4Address("10.2.0.2")) {
-    //         macOpt = pcpp::MacAddress("00:0c:29:f4:16:2d");
-    //         learnArp("ens38", nextHop, *macOpt);
-    //     }
-    // }
+    // B. If missing, check STATIC MAPPING (Opcjonalnie odkomentuj, jeśli dynamiczny ARP zawodzi)
+    /*
+    if (!macOpt) {
+        if (outInterface->getName() == "ens34" && nextHop == pcpp::IPv4Address("192.168.1.2")) {
+            macOpt = pcpp::MacAddress("00:86:9c:27:67:11");
+            learnArp("ens34", nextHop, *macOpt);
+        }
+        else if (nextHop == pcpp::IPv4Address("10.1.0.2")) {
+            macOpt = pcpp::MacAddress("00:0c:29:7e:17:2a");
+            learnArp("ens37", nextHop, *macOpt);
+        }
+        else if (nextHop == pcpp::IPv4Address("10.2.0.2")) {
+            macOpt = pcpp::MacAddress("00:0c:29:f4:16:2d");
+            learnArp("ens38", nextHop, *macOpt);
+        }
+    }
+    */
 
     // 6. Send or Queue
     if (macOpt) {
-        // We have the MAC, send immediately
         eth->setDestMac(*macOpt);
         if (!outInterface->sendPacket(&packet)) {
             std::cerr << "[Routing] Failed to send packet on " << outInterface->getName() << std::endl;
         }
     } else {
-        // We don't have the MAC. Do NOT broadcast the IP packet (avoids loops).
         // Queue it and send ARP Request instead.
-        // std::cout << "[Routing] ARP Miss for " << nextHop.toString() << ", queueing..." << std::endl;
         enqueuePending(outInterface->getName(), nextHop, packet);
         sendArpRequest(outInterface, nextHop);
     }
