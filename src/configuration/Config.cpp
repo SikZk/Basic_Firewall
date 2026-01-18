@@ -32,6 +32,41 @@ std::vector<pcpp::PcapLiveDevice*> Config::getCaptureInterfaces()
 void Config::parseDecryptionProfile(const boost::json::value& object) { (void)object; };
 
 // --- Parsowanie Security Policy z JSON ---
+void Config::parseSecurityPolicy(const boost::json::value& object)
+{
+    security_policies.clear();
+    if (!object.is_array()) {
+        return;
+    }
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string src_net = obj.at("src_network").as_string().c_str();
+        uint32_t src_mask = static_cast<uint32_t>(obj.at("src_mask").as_int64());
+        std::string dst_net = obj.at("dest_network").as_string().c_str();
+        uint32_t dst_mask = static_cast<uint32_t>(obj.at("dest_mask").as_int64());
+        uint16_t src_port = static_cast<uint16_t>(obj.at("src_port").as_int64());
+        uint16_t dst_port = static_cast<uint16_t>(obj.at("dest_port").as_int64());
+
+        bool allow = false;
+        if (obj.contains("action")) {
+            auto action = std::string(obj.at("action").as_string());
+            if (action == "allow") {
+                allow = true;
+            }
+        }
+
+        security_policies.emplace_back(
+            src_net, src_mask, dst_net, dst_mask, src_port, dst_port, allow, {}
+        );
+    }
+
+    security_policies.emplace_back(
+        "0.0.0.0", 0, "0.0.0.0", 0, 0, 0, false, {}
+    );
+}
 
 // --- Parsowanie NAT Policy z JSON ---
 void Config::parseNatPolicy(const boost::json::value& object) {
@@ -86,6 +121,7 @@ void Config::loadFromFile(const std::string& filepath)
 
         if (obj.contains("interfaces")) parseInterfaces(obj.at("interfaces"));
         if (obj.contains("routes")) parseRoutingTable(obj.at("routes"));
+        if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
         // Dodane parsowanie nowych sekcji
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
 

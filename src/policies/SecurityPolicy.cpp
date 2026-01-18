@@ -6,10 +6,5 @@ std::vector<std::shared_ptr<SecurityProfile>> SecurityPolicy::evaluate_security_
     std::cout << "[SecurityPolicy] Evaluating security profiles for "
               << ipLayer.getSrcIPv4Address().toString() << " -> "
               << ipLayer.getDstIPv4Address().toString() << std::endl;
-    return security_profiles;
-}
-
-bool SecurityPolicy::getAllowPacket()
-{
-    return allow_packet;
+    return profiles;
 }

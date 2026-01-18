@@ -93,6 +93,21 @@ bool isInternalNetwork(const IPv4Address& ip) {
     return ip.toString().rfind("10.", 0) == 0;
 }
 
+bool isAllowedBySecurityPolicies(const IPv4Layer& ipLayer, const std::vector<SecurityPolicy>& policies)
+{
+    if (policies.empty()) {
+        return true;
+    }
+
+    for (const auto& policy : policies) {
+        if (policy.does_match_policy(ipLayer)) {
+            return policy.allow;
+        }
+    }
+
+    return false;
+}
+
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 {
     if (!rawPacket || !inDev) return;
@@ -126,6 +141,15 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     IPv4Layer* ipLayer = packet.getLayerOfType<IPv4Layer>();
     if (!ipLayer) return;
+
+    if (!isAllowedBySecurityPolicies(*ipLayer, configuration.security_policies)) {
+        std::cout << "[SECURITY] Dropping packet "
+                  << ipLayer->getSrcIPv4Address().toString()
+                  << " -> "
+                  << ipLayer->getDstIPv4Address().toString()
+                  << " (blocked by policy)" << std::endl;
+        return;
+    }
 
     SessionFlowKey key = getKeyFromPacket(packet);
 
