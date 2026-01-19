@@ -7,11 +7,15 @@
 #include "../policies/NatPolicy.h"
 #include "../decryption/DecryptionProfile.h"
 #include "../routing/RoutingTable.h"
+#include "../security_profiles/UrlFilteringProfile.h"
+#include "../security_profiles/AntimalwareProfile.h"
 
 
 class Config {
     public:
         std::vector<DecryptionProfile> decryption_profiles;
+        std::vector<std::shared_ptr<UrlFilteringProfile>> url_filtering_profiles;
+        std::vector<std::shared_ptr<AntimalwareProfile>> antimalware_profiles;
         std::vector<SecurityPolicy> security_policies;
         std::vector<NatPolicy> nat_policies;
         std::vector<std::string> malware_hashes;
@@ -28,6 +32,8 @@ class Config {
     private:
         // pamiętajmy aby dodać tutaj na końcu profilu decryption_profile.should_decrypt = false; dla wszystkich sesji
         void parseDecryptionProfile(const boost::json::value& object);
+        void parseUrlFilteringProfile(const boost::json::value& object);
+        void parseAntimalwareProfile(const boost::json::value& object);
         // pamiętajmy żeby tutaj po zparsowaniu zawsze dodać na samym końcu DENY from any to any
         void parseSecurityPolicy(const boost::json::value& object);
         void parseNatPolicy(const boost::json::value& object);

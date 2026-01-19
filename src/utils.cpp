@@ -8,6 +8,81 @@
 #include "../include/session/sessions/NatSession.h"
 #include "utils.h"
 #include <arpa/inet.h>
+#include <iostream>
+#include "pcapplusplus/EthLayer.h"
+#include "pcapplusplus/IPv4Layer.h"
+#include "pcapplusplus/TcpLayer.h"
+#include "pcapplusplus/Packet.h"
+
+void sendTcpRst(pcpp::Packet& packet, pcpp::PcapLiveDevice* outInterface) {
+    if (!outInterface) return;
+
+    pcpp::EthLayer* ethLayer = packet.getLayerOfType<pcpp::EthLayer>();
+    pcpp::IPv4Layer* ipLayer = packet.getLayerOfType<pcpp::IPv4Layer>();
+    pcpp::TcpLayer* tcpLayer = packet.getLayerOfType<pcpp::TcpLayer>();
+
+    if (!ethLayer || !ipLayer || !tcpLayer) return;
+
+    // Create a new packet
+    pcpp::Packet rstPacket;
+
+    // 1. Ethernet Layer - swap src/dst
+    pcpp::EthLayer newEthLayer(outInterface->getMacAddress(), ethLayer->getSourceMac());
+    rstPacket.addLayer(&newEthLayer);
+
+    // 2. IPv4 Layer - swap src/dst
+    pcpp::IPv4Layer newIpLayer(ipLayer->getDstIPv4Address(), ipLayer->getSrcIPv4Address());
+    newIpLayer.getIPv4Header()->timeToLive = 64;
+    rstPacket.addLayer(&newIpLayer);
+
+    // 3. TCP Layer - swap ports, set RST flag
+    // Sequence number logic for RST:
+    // If ACK is set in original: Seq = Ack, Ack = 0 (RST usually doesn't need ACK, but RST+ACK is also common. RST alone is fine often.)
+    // If ACK is NOT set (e.g. SYN): Seq = 0, Ack = Seq + Len (or +1 for SYN) + Ack flag.
+    // For simplicity and effectiveness in blocking:
+    // We send RST+ACK. Seq = Received Ack. Ack = Received Seq + Payload Len + Flags(SYN/FIN=1 else 0)
+
+    uint32_t receivedSeq = ntohl(tcpLayer->getTcpHeader()->sequenceNumber);
+    uint32_t receivedAck = ntohl(tcpLayer->getTcpHeader()->ackNumber);
+    uint32_t receivedPayloadLen = tcpLayer->getLayerPayloadSize();
+    
+    // Calculate new Seq and Ack
+    uint32_t newSeq = 0;
+    uint32_t newAck = 0;
+    
+    // If the blocked packet has ACK, our RST should use that ACK as SEQ.
+    if (tcpLayer->getTcpHeader()->ackFlag) {
+        newSeq = receivedAck;
+    } else {
+        newSeq = 0; 
+    }
+
+    // We need to ACK whatever they sent us so they accept the RST
+    // Increase Ack by 1 if SYN or FIN was set, plus payload length
+    uint32_t lenToAdd = receivedPayloadLen;
+    if (tcpLayer->getTcpHeader()->synFlag || tcpLayer->getTcpHeader()->finFlag) {
+        lenToAdd += 1;
+    }
+    newAck = receivedSeq + lenToAdd;
+
+
+    pcpp::TcpLayer newTcpLayer(ntohs(tcpLayer->getTcpHeader()->portDst), ntohs(tcpLayer->getTcpHeader()->portSrc));
+    newTcpLayer.getTcpHeader()->rstFlag = 1;
+    newTcpLayer.getTcpHeader()->ackFlag = 1;
+    newTcpLayer.getTcpHeader()->sequenceNumber = htonl(newSeq);
+    newTcpLayer.getTcpHeader()->ackNumber = htonl(newAck);
+    newTcpLayer.getTcpHeader()->windowSize = htons(0); // Window 0 usually for RST
+
+    rstPacket.addLayer(&newTcpLayer);
+
+    rstPacket.computeCalculateFields();
+
+    if (!outInterface->sendPacket(&rstPacket)) {
+        std::cerr << "[RST] Failed to send RST packet" << std::endl;
+    } else {
+        std::cout << "[RST] Sent TCP Reset to " << ipLayer->getSrcIPv4Address().toString() << std::endl;
+    }
+}
 
 using namespace pcpp;
 

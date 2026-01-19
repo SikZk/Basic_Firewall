@@ -136,6 +136,34 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
                           << std::endl;
                 return;
             }
+
+            // Check security profiles (only if policy allows)
+            auto profiles = policy.evaluate_security_profiles(*ipLayer);
+            
+            // Generate key for session lookup
+            SessionFlowKey key = getKeyFromPacket(packet);
+
+            // Access global NatState
+            NatState& state = NatPolicy::nat_state;
+
+            // Try to find existing session for stateful inspection
+            Session* session = state.table.findSession(key);
+
+            for (const auto& profile : profiles) {
+                // Pass the found session (can be nullptr if not yet established or tracked)
+                if (profile->scan(session, packet) == Action::BLOCK) {
+                    std::cout << "[SECURITY] Blocked by Profile: "
+                              << ipLayer->getSrcIPv4Address().toString()
+                              << " -> " << ipLayer->getDstIPv4Address().toString()
+                              << std::endl;
+                    
+                    // Send TCP RST if it's a TCP packet
+                    if (packet.isPacketOfType(pcpp::TCP)) {
+                        sendTcpRst(packet, inDev);
+                    }
+                    return;
+                }
+            }
             break;
         }
     }
@@ -190,13 +218,13 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     // Wyślij zmodyfikowaną kopię pakietu
     pcpp::IPv4Layer* finalIpLayer = packet.getLayerOfType<pcpp::IPv4Layer>();
-    if (finalIpLayer) {
-        std::cout << "[FINAL SEND] Packet buffer check: "
-                  << finalIpLayer->getSrcIPv4Address().toString()
-                  << " -> "
-                  << finalIpLayer->getDstIPv4Address().toString()
-                  << std::endl;
-    }
+    // if (finalIpLayer) {
+    //     std::cout << "[FINAL SEND] Packet buffer check: "
+    //               << finalIpLayer->getSrcIPv4Address().toString()
+    //               << " -> "
+    //               << finalIpLayer->getDstIPv4Address().toString()
+    //               << std::endl;
+    // }
     routingEngine.routePacket(packet, inDev, configuration.routing_table);
 }
 
