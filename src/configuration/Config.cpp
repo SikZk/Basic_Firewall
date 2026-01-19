@@ -150,6 +150,18 @@ void Config::parseRoutingTable(const boost::json::value& object)
     }
 };
 
+void Config::parseTlsMitm(const boost::json::value& object)
+{
+    if (!object.is_object()) return;
+    const auto& obj = object.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end() && it->value().is_bool()) {
+        tls_mitm_enabled = it->value().as_bool();
+    }
+    if (auto it = obj.find("listen_port"); it != obj.end() && it->value().is_int64()) {
+        tls_mitm_port = static_cast<uint16_t>(it->value().as_int64());
+    }
+}
+
 void Config::loadFromFile(const std::string& filepath)
 {
     std::ifstream file(filepath);
@@ -171,6 +183,7 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
         if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
         if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
+        if (obj.contains("tls_mitm")) parseTlsMitm(obj.at("tls_mitm"));
 
     } catch (...) {}
 };

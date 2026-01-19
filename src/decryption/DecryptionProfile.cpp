@@ -120,6 +120,16 @@ bool DecryptionProfile::matchesEndpoints(const pcpp::IPv4Address& source, const 
            matchesNetwork(destination, network_to, network_to_mask);
 }
 
+X509* DecryptionProfile::getCaCert() const
+{
+    return ca_cert;
+}
+
+EVP_PKEY* DecryptionProfile::getCaPrivateKey() const
+{
+    return ca_private_key;
+}
+
 uint8_t* DecryptionProfile::decrypt()
 {
     return nullptr;

@@ -18,6 +18,7 @@ add_executable(Basic_Firewall src/main.cpp
         src/session/sessions/Session.cpp
         src/decryption/DecryptionManager.cpp
         src/decryption/DecryptionProfile.cpp
+        src/decryption/TlsMitmProxy.cpp
         src/session/sessions/DecryptionSession.cpp
         src/session/sessions/NatSession.cpp
         src/session/session_tables/SessionTable.cpp
@@ -42,5 +43,5 @@ target_link_directories(Basic_Firewall PRIVATE
         /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/lib
 )
 target_link_libraries(Basic_Firewall PRIVATE
-        Pcap++ Packet++ Common++ pcap pthread
+        Pcap++ Packet++ Common++ pcap pthread ssl crypto
 )

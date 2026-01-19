@@ -12,6 +12,7 @@
 #include <optional>
 #include <algorithm>
 #include <cstring>
+#include <memory>
 
 // Include Boost headers
 #include <boost/json.hpp>
@@ -41,6 +42,7 @@
 #include "../include/routing/RoutingEngine.h"
 #include "../include/policies/NatService.h"
 #include "../include/session/session_tables/DecryptionSessionTable.h"
+#include "../include/decryption/TlsMitmProxy.h"
 
 using namespace pcpp;
 
@@ -51,11 +53,15 @@ static RoutingEngine routingEngine;
 static std::vector<PcapLiveDevice*> gInterfaces;
 static NatService natService;
 static DecryptionSessionTable decryptionSessionTable;
+static std::unique_ptr<TlsMitmProxy> tlsMitmProxy;
 
 const IPv4Address EXTERNAL_IP("192.168.1.39");
 
 static void exitProgram(int) {
     stopSignal = 1;
+    if (tlsMitmProxy) {
+        tlsMitmProxy->stop();
+    }
     for (auto* dev : gInterfaces) {
         if (dev && dev->isOpened())
             dev->stopCapture();
@@ -272,6 +278,10 @@ int main()
     std::signal(SIGTERM, exitProgram);
 
     configuration.load();
+    if (configuration.tls_mitm_enabled) {
+        tlsMitmProxy = std::make_unique<TlsMitmProxy>(configuration);
+        tlsMitmProxy->start();
+    }
     NatPolicy::configureNatState(10000, 20000);
 
     auto interfaces = configuration.getCaptureInterfaces();
