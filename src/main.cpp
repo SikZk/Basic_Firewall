@@ -40,6 +40,7 @@
 #include "utils.h"
 #include "../include/routing/RoutingEngine.h"
 #include "../include/policies/NatService.h"
+#include "../include/session/session_tables/DecryptionSessionTable.h"
 
 using namespace pcpp;
 
@@ -49,6 +50,7 @@ static Config configuration("../resources/config.json");
 static RoutingEngine routingEngine;
 static std::vector<PcapLiveDevice*> gInterfaces;
 static NatService natService;
+static DecryptionSessionTable decryptionSessionTable;
 
 const IPv4Address EXTERNAL_IP("192.168.1.39");
 
@@ -93,6 +95,44 @@ bool isInternalNetwork(const IPv4Address& ip) {
     return ip.toString().rfind("10.", 0) == 0;
 }
 
+bool isHttpsPacket(const TcpLayer* tcpLayer)
+{
+    if (!tcpLayer) {
+        return false;
+    }
+    const auto* header = tcpLayer->getTcpHeader();
+    if (!header) {
+        return false;
+    }
+    uint16_t src_port = ntohs(header->portSrc);
+    uint16_t dst_port = ntohs(header->portDst);
+    return src_port == 443 || dst_port == 443;
+}
+
+bool shouldDecryptTraffic(const IPv4Layer& ipLayer)
+{
+    for (const auto& profile : configuration.decryption_profiles) {
+        if (!profile.shouldDecrypt()) {
+            continue;
+        }
+        if (profile.matchesEndpoints(ipLayer.getSrcIPv4Address(), ipLayer.getDstIPv4Address())) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void logDecryptedHttpIfReady(DecryptionSession& session)
+{
+    if (!session.hasCompleteHttpHeader()) {
+        return;
+    }
+    const auto data = session.getDecryptedDataAsString();
+    std::cout << "[HTTPS Decrypt] HTTP payload:" << std::endl;
+    std::cout << data << std::endl;
+    session.clearBuffer();
+}
+
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 {
     if (!rawPacket || !inDev) return;
@@ -126,6 +166,44 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     IPv4Layer* ipLayer = packet.getLayerOfType<IPv4Layer>();
     if (!ipLayer) return;
+
+    TcpLayer* tcpLayer = packet.getLayerOfType<TcpLayer>();
+    if (tcpLayer && isHttpsPacket(tcpLayer) && shouldDecryptTraffic(*ipLayer)) {
+        const auto* tcpHeader = tcpLayer->getTcpHeader();
+        SessionFlowKey decryptKey = getKeyFromPacket(packet);
+        auto* existing = decryptionSessionTable.findSession(decryptKey);
+        if (!existing) {
+            DecryptionSession newSession(
+                inDev->getIPv4Address(),
+                ipLayer->getSrcIPv4Address(),
+                ntohs(tcpHeader->portSrc),
+                ipLayer->getDstIPv4Address(),
+                ntohs(tcpHeader->portDst)
+            );
+            existing = &decryptionSessionTable.createSession(decryptKey, std::move(newSession));
+        }
+
+        auto* decryptSession = static_cast<DecryptionSession*>(existing);
+        const uint8_t* payload = tcpLayer->getLayerPayload();
+        size_t payloadLen = tcpLayer->getLayerPayloadSize();
+        if (payloadLen > 0) {
+            decryptSession->processEncryptedData(payload, payloadLen);
+            logDecryptedHttpIfReady(*decryptSession);
+        }
+    }
+
+    for (const auto& policy : configuration.security_policies) {
+        if (policy.does_match_policy(*ipLayer)) {
+            if (!policy.allowsPacket()) {
+                std::cout << "[SECURITY] Dropped packet: "
+                          << ipLayer->getSrcIPv4Address().toString()
+                          << " -> " << ipLayer->getDstIPv4Address().toString()
+                          << std::endl;
+                return;
+            }
+            break;
+        }
+    }
 
     SessionFlowKey key = getKeyFromPacket(packet);
 

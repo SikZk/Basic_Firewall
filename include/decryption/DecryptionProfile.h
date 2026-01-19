@@ -27,12 +27,15 @@ class DecryptionProfile {
                           std::string to_ip, uint32_t to_mask);
 
         bool loadCryptoMaterial();
-        bool shouldDecrypt();
+        bool shouldDecrypt() const;
         bool doesMatchProfile(Session const& session) const;
+        bool matchesEndpoints(const pcpp::IPv4Address& source, const pcpp::IPv4Address& destination) const;
         uint8_t* decrypt();
     private:
-        pcpp::IPv4Network network_from;
-        pcpp::IPv4Network network_to;
+        pcpp::IPv4Address network_from;
+        uint32_t network_from_mask;
+        pcpp::IPv4Address network_to;
+        uint32_t network_to_mask;
    };
 
 
