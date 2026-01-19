@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(Basic_Firewall)
 set(CMAKE_CXX_STANDARD 20)
+find_package(OpenSSL REQUIRED)
 
 add_executable(Basic_Firewall src/main.cpp
         include/policies/SecurityPolicy.h
@@ -35,7 +36,11 @@ add_executable(Basic_Firewall src/main.cpp
         src/security_profiles/AntimalwareProfile.cpp
         src/security_profiles/DlpProfile.cpp
 )
-
+target_link_libraries(Basic_Firewall
+        PRIVATE
+        OpenSSL::Crypto
+        OpenSSL::SSL
+)
 target_include_directories(Basic_Firewall PRIVATE
         /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/include
 )

@@ -7,11 +7,14 @@
 #include <unordered_map>
 #include <utility>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <openssl/ssl.h>
 #include <pcapplusplus/IpAddress.h>
 
 #include "../configuration/Config.h"
-
 class TlsMitmProxy {
 public:
     explicit TlsMitmProxy(Config& config);
@@ -35,5 +38,6 @@ private:
     const DecryptionProfile* matchProfile(const pcpp::IPv4Address& source, const pcpp::IPv4Address& destination) const;
     std::pair<X509*, EVP_PKEY*> getOrCreateCertificate(const std::string& servername, const DecryptionProfile& profile);
 
-    static int sniCallback(SSL* ssl, int* alert, void* arg);
+    static int sniCallback(::SSL* ssl, int* alert, void* arg);
+
 };

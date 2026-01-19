@@ -250,8 +250,8 @@ std::pair<X509*, EVP_PKEY*> TlsMitmProxy::getOrCreateCertificate(const std::stri
     return {leaf_cert, leaf_key};
 }
 
-int TlsMitmProxy::sniCallback(SSL* ssl, int*, void* arg)
-{
+int TlsMitmProxy::sniCallback(::SSL* ssl, int* alert, void* arg) {
+
     auto* proxy = static_cast<TlsMitmProxy*>(arg);
     const char* servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (!servername || !proxy) {

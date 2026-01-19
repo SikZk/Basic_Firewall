@@ -282,13 +282,13 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     // Wyślij zmodyfikowaną kopię pakietu
     pcpp::IPv4Layer* finalIpLayer = packet.getLayerOfType<pcpp::IPv4Layer>();
-    if (finalIpLayer) {
-        std::cout << "[FINAL SEND] Packet buffer check: "
-                  << finalIpLayer->getSrcIPv4Address().toString()
-                  << " -> "
-                  << finalIpLayer->getDstIPv4Address().toString()
-                  << std::endl;
-    }
+    // if (finalIpLayer) {
+    //     std::cout << "[FINAL SEND] Packet buffer check: "
+    //               << finalIpLayer->getSrcIPv4Address().toString()
+    //               << " -> "
+    //               << finalIpLayer->getDstIPv4Address().toString()
+    //               << std::endl;
+    // }
     routingEngine.routePacket(packet, inDev, configuration.routing_table);
 }
 
