@@ -13,9 +13,10 @@ class UrlFilteringProfile : public SecurityProfile {
         std::unordered_set<std::string> blocked_domains;
 
     public:
-        explicit UrlFilteringProfile(const std::vector<std::string>& domains_to_block);
-        Action scan(Session* session, const pcpp::IPv4Layer& packet) override;
-        Action scan(const DecryptionSession& session, pcpp::IPv4Layer ipv4_packet) override;
+        std::string name;
+        explicit UrlFilteringProfile(std::string name, const std::vector<std::string>& domains_to_block);
+        Action scan(Session* session, const pcpp::Packet& packet) override;
+        Action scan(const DecryptionSession& session, const pcpp::Packet& packet) override;
 };
 
 #endif //BASIC_FIREWALL_URL_FILTERING_PROFILE_H

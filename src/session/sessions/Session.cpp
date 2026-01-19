@@ -2,6 +2,10 @@
 #include <algorithm>
 #include <cstring>
 
+#include <openssl/evp.h>
+#include <iomanip>
+#include <sstream>
+
 Session::Session(
     pcpp::IPv4Address firewall_interface_src_ip,
     pcpp::IPv4Address firewall_interface_dest_ip,
@@ -15,10 +19,48 @@ Session::Session(
       session_state(HANDSHAKE_INIT),
       data(nullptr),
       data_length(0),
-      data_capacity(0)
+      data_capacity(0),
+      am_sha256_ctx(EVP_MD_CTX_new())
 {
     (void)firewall_interface_src_ip;
     (void)firewall_interface_dest_ip;
+
+    if (am_sha256_ctx) {
+        EVP_DigestInit_ex(am_sha256_ctx, EVP_sha256(), nullptr);
+    }
+}
+
+Session::~Session() {
+    if (data) delete[] data;
+    if (am_sha256_ctx) EVP_MD_CTX_free(am_sha256_ctx);
+}
+
+void Session::updateAntimalwareHash(const uint8_t* data, size_t len) {
+    if (am_sha256_ctx && data && len > 0) {
+        EVP_DigestUpdate(am_sha256_ctx, data, len);
+    }
+}
+
+std::string Session::finalizeAntimalwareHash() {
+    if (!am_sha256_ctx) return "";
+
+    uint8_t hash[EVP_MAX_MD_SIZE];
+    unsigned int lengthOfHash = 0;
+
+    // Use a copy to avoid destroying the context if we needed it again (though finalize usually ends it)
+    // Or just finalize it once. Here we finalize once.
+    if (EVP_DigestFinal_ex(am_sha256_ctx, hash, &lengthOfHash) != 1) {
+        return "";
+    }
+
+    // Re-init for safety if reused, though usually session ends.
+    EVP_DigestInit_ex(am_sha256_ctx, EVP_sha256(), nullptr);
+
+    std::stringstream ss;
+    for (unsigned int i = 0; i < lengthOfHash; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+    }
+    return ss.str();
 }
 
 SessionFlowKey Session::generateSessionFlowKey(

@@ -47,6 +47,9 @@ target_include_directories(Basic_Firewall PRIVATE
 target_link_directories(Basic_Firewall PRIVATE
         /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/lib
 )
+find_package(OpenSSL REQUIRED)
+
 target_link_libraries(Basic_Firewall PRIVATE
-        Pcap++ Packet++ Common++ pcap pthread ssl crypto
+        Pcap++ Packet++ Common++ pcap pthread
+        OpenSSL::SSL OpenSSL::Crypto
 )

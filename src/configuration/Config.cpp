@@ -90,6 +90,30 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
             action = SecurityPolicy::Action::Allow;
         }
 
+        std::vector<std::shared_ptr<SecurityProfile>> profiles;
+        if (obj.contains("security_profiles") && obj.at("security_profiles").is_array()) {
+            for (const auto& prod_ref : obj.at("security_profiles").as_array()) {
+                std::string profile_name(prod_ref.as_string());
+                bool found = false;
+                for (const auto& profile : url_filtering_profiles) {
+                    if (profile->name == profile_name) {
+                        profiles.push_back(profile);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    for (const auto& profile : antimalware_profiles) {
+                        if (profile->name == profile_name) {
+                            profiles.push_back(profile);
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         security_policies.emplace_back(
             src_net,
             src_mask,
@@ -98,7 +122,7 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
             src_port,
             dst_port,
             action,
-            std::vector<std::shared_ptr<SecurityProfile>>{}
+            profiles
         );
     }
 
@@ -134,6 +158,48 @@ void Config::parseNatPolicy(const boost::json::value& object) {
         );
     }
 };
+
+void Config::parseUrlFilteringProfile(const boost::json::value& object) {
+    if (!object.is_array()) return;
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string name = "urldefault";
+        if (obj.contains("name")) name = std::string(obj.at("name").as_string());
+
+        std::vector<std::string> blocked_domains;
+        if (obj.contains("blocked_domains") && obj.at("blocked_domains").is_array()) {
+            for (const auto& domain : obj.at("blocked_domains").as_array()) {
+                blocked_domains.push_back(std::string(domain.as_string()));
+            }
+        }
+
+        url_filtering_profiles.push_back(std::make_shared<UrlFilteringProfile>(name, blocked_domains));
+    }
+}
+
+void Config::parseAntimalwareProfile(const boost::json::value& object) {
+    if (!object.is_array()) return;
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string name = "am_default";
+        if (obj.contains("name")) name = std::string(obj.at("name").as_string());
+
+        std::vector<std::string> known_hashes;
+        if (obj.contains("known_malware_hashes") && obj.at("known_malware_hashes").is_array()) {
+            for (const auto& hash : obj.at("known_malware_hashes").as_array()) {
+                known_hashes.push_back(std::string(hash.as_string()));
+            }
+        }
+
+        antimalware_profiles.push_back(std::make_shared<AntimalwareProfile>(name, known_hashes));
+    }
+}
 
 void Config::parseRoutingTable(const boost::json::value& object)
 {
@@ -181,6 +247,8 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("routes")) parseRoutingTable(obj.at("routes"));
         // Dodane parsowanie nowych sekcji
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
+        if (obj.contains("url_filtering_profiles")) parseUrlFilteringProfile(obj.at("url_filtering_profiles"));
+        if (obj.contains("antimalware_profiles")) parseAntimalwareProfile(obj.at("antimalware_profiles"));
         if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
         if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
         if (obj.contains("tls_mitm")) parseTlsMitm(obj.at("tls_mitm"));

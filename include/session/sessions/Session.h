@@ -64,6 +64,9 @@ class Session {
         uint8_t* data;
         size_t   data_length = 0;
         size_t   data_capacity = 0;
+        EVP_MD_CTX* am_sha256_ctx = nullptr;
+        bool is_http_detected = false;
+
     public:
         Session(
             pcpp::IPv4Address firewall_interface_src_ip,
@@ -73,7 +76,7 @@ class Session {
             pcpp::IPv4Address destination_ip,
             uint16_t          destination_port
         );
-        ~Session() = default;
+        ~Session();
         static SessionFlowKey generateSessionFlowKey(
             pcpp::IPv4Address source_ip,
             uint16_t          source_port,
@@ -86,6 +89,12 @@ class Session {
         const SessionFlow& getSourceToDestinationFlow() const;
         const SessionFlow& getDestinationToSourceFlow() const;
 
+        void updateAntimalwareHash(const uint8_t* data, size_t len);
+        std::string finalizeAntimalwareHash();
+
+        void setHttpDetected(bool detected) { is_http_detected = detected; }
+        bool isHttpDetected() const { return is_http_detected; }
+    
 };
 
 

@@ -9,13 +9,13 @@ DlpProfile::DlpProfile(const std::vector<std::string>& regex_patterns)
     }
 }
 
-Action DlpProfile::scan(Session*, const pcpp::IPv4Layer&)
+Action DlpProfile::scan(Session*, const pcpp::Packet&)
 {
     std::cout << "[DLP] No-op scan." << std::endl;
     return ALLOW;
 }
 
-Action DlpProfile::scan(const DecryptionSession&, pcpp::IPv4Layer)
+Action DlpProfile::scan(const DecryptionSession&, const pcpp::Packet&)
 {
     std::cout << "[DLP] No-op scan (decrypted)." << std::endl;
     return ALLOW;
