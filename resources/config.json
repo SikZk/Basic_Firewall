@@ -40,7 +40,31 @@
       "dest_port": 0
     }
   ],
+  "decryption_profiles": [
+    {
+      "name": "decrypt-https-internal",
+      "ca_certificate_path": "resources/certs/ca.crt",
+      "ca_private_key_path": "resources/certs/ca.key",
+      "src_network": "10.1.0.0",
+      "src_mask": 24,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0
+    }
+  ],
+  "tls_mitm": {
+    "enabled": true,
+    "listen_port": 8443
+  },
   "security_policies": [
+    {
+      "src_network": "10.1.0.0",
+      "src_mask": 24,
+      "dest_network": "192.168.1.0",
+      "dest_mask": 24,
+      "src_port": 0,
+      "dest_port": 0,
+      "action": "deny"
+    },
     {
       "src_network": "0.0.0.0",
       "src_mask": 0,

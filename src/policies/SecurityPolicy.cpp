@@ -1,7 +1,7 @@
 #include "../../include/policies/SecurityPolicy.h"
 #include <iostream>
 
-std::vector<std::shared_ptr<SecurityProfile>> SecurityPolicy::evaluate_security_profiles(const pcpp::IPv4Layer& ipLayer)
+std::vector<std::shared_ptr<SecurityProfile>> SecurityPolicy::evaluate_security_profiles(const pcpp::IPv4Layer& ipLayer) const
 {
     std::cout << "[SecurityPolicy] Evaluating security profiles for "
               << ipLayer.getSrcIPv4Address().toString() << " -> "
@@ -9,7 +9,7 @@ std::vector<std::shared_ptr<SecurityProfile>> SecurityPolicy::evaluate_security_
     return security_profiles;
 }
 
-bool SecurityPolicy::getAllowPacket()
+bool SecurityPolicy::allowsPacket() const
 {
-    return allow_packet;
+    return action == Action::Allow;
 }
