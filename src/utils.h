@@ -61,7 +61,7 @@ Session* createOrGetSession(
     const TcpLayer* tcpLayerPacket,
     PcapLiveDevice* captureInterface
 );
-DecryptionSession createOrGetDecryptionSession(
+DecryptionSession* createOrGetDecryptionSession(
    DecryptionSessionTable &decryptionSessionTable,
    const SessionFlowKey& key,
    Session* session,

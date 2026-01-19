@@ -18,6 +18,8 @@ class Config {
         RoutingTable routing_table;
         std::vector<std::string> interface_names;
         std::pmr::string configuration_file_path;
+        bool tls_mitm_enabled = false;
+        uint16_t tls_mitm_port = 8443;
 
         Config(std::pmr::string file_path)
             : configuration_file_path(std::move(file_path)) {};
@@ -32,6 +34,7 @@ class Config {
         void parseSecurityPolicy(const boost::json::value& object);
         void parseNatPolicy(const boost::json::value& object);
         void parseRoutingTable(const boost::json::value& object);
+        void parseTlsMitm(const boost::json::value& object);
         void loadFromFile(const std::string& filepath);
         void parseInterfaces(const boost::json::value& object);
         void loadMalwareDatabase(const boost::json::value& object); // bierze sciezke podana w configu do bazki z samplami

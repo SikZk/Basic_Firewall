@@ -22,6 +22,7 @@ private:
     BIO* server_read_bio = nullptr;
     BIO* server_write_bio = nullptr;
     std::vector<uint8_t> decrypted_buffer;
+    bool warned_encrypted = false;
 public:
     DecryptionSession(
         pcpp::IPv4Address firewall_interface_ip,
