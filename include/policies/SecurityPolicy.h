@@ -9,8 +9,13 @@ class SecurityProfile;
 
 class SecurityPolicy : public Policy {
 public:
-    bool allow;
-    std::vector<std::shared_ptr<SecurityProfile>> profiles;
+    enum class Action {
+        Allow,
+        Deny
+    };
+
+    Action action;
+    std::vector<std::shared_ptr<SecurityProfile>> security_profiles;
 
     // Use std::string instead of std::pmr::string
     SecurityPolicy(
@@ -20,11 +25,13 @@ public:
             uint32_t network_to_mask,
             uint16_t source_port,
             uint16_t destination_port,
-            bool allow,
+            Action action,
             std::vector<std::shared_ptr<SecurityProfile>> profiles
     ) : Policy(network_from_str, network_from_mask, network_to_str, network_to_mask, source_port, destination_port),
-        allow(allow),
-        profiles(std::move(profiles))
+        action(action),
+        security_profiles(std::move(profiles))
     {}
-    std::vector<std::shared_ptr<SecurityProfile>> evaluate_security_profiles(const pcpp::IPv4Layer& ipLayer);
+
+    bool allowsPacket() const;
+    std::vector<std::shared_ptr<SecurityProfile>> evaluate_security_profiles(const pcpp::IPv4Layer& ipLayer) const;
 };

@@ -40,7 +40,7 @@ T matchBasedOnObject(
     }
 
     if constexpr (std::is_same_v<T, SecurityPolicy>) {
-        return SecurityPolicy("0.0.0.0", 0, "0.0.0.0", 0, 0, 0, true, {});
+        return SecurityPolicy("0.0.0.0", 0, "0.0.0.0", 0, 0, 0, SecurityPolicy::Action::Allow, {});
     } else if constexpr (std::is_same_v<T, DecryptionProfile>) {
         return DecryptionProfile("default", "", "", "0.0.0.0", 0, "0.0.0.0", 0);
     } else if constexpr (std::is_same_v<T, NatPolicy>) {

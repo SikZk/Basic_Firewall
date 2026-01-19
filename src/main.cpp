@@ -127,6 +127,19 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     IPv4Layer* ipLayer = packet.getLayerOfType<IPv4Layer>();
     if (!ipLayer) return;
 
+    for (const auto& policy : configuration.security_policies) {
+        if (policy.does_match_policy(*ipLayer)) {
+            if (!policy.allowsPacket()) {
+                std::cout << "[SECURITY] Dropped packet: "
+                          << ipLayer->getSrcIPv4Address().toString()
+                          << " -> " << ipLayer->getDstIPv4Address().toString()
+                          << std::endl;
+                return;
+            }
+            break;
+        }
+    }
+
     SessionFlowKey key = getKeyFromPacket(packet);
 
     bool debug = (key.protocol == pcpp::ICMP);
