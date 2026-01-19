@@ -1,0 +1,84 @@
+{
+  "interfaces": {
+    "port1": "ens34",
+    "port2": "ens37",
+    "port3": "ens38"
+  },
+  "routes": [
+    {
+      "network": "10.1.0.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens37"
+    },
+    {
+      "network": "10.2.0.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens38"
+    },
+    {
+      "network": "192.168.1.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens34"
+    },
+    {
+      "network": "0.0.0.0",
+      "mask": "0.0.0.0",
+      "gateway": "192.168.1.2",
+      "interface": "ens34"
+    }
+  ],
+  "nat_policies": [
+    {
+      "src_network": "10.2.0.0",
+      "src_mask": 24,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "src_port": 0,
+      "dest_port": 0
+    }
+  ],
+  "url_filtering_profiles": [
+    {
+      "name": "block_defaults",
+      "blocked_domains": [
+        "google.com",
+        "example.com"
+      ]
+    }
+  ],
+  "antimalware_profiles": [
+    {
+      "name": "malware_test",
+      "known_malware_hashes": [
+        "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+      ]
+    }
+  ],
+  "security_policies": [
+    {
+      "src_network": "10.1.0.0",
+      "src_mask": 24,
+      "dest_network": "192.168.1.0",
+      "dest_mask": 24,
+      "src_port": 0,
+      "dest_port": 0,
+      "action": "deny"
+    },
+    {
+      "src_network": "0.0.0.0",
+      "src_mask": 0,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "src_port": 0,
+      "dest_port": 0,
+      "action": "allow",
+      "security_profiles": [
+        "block_defaults",
+        "malware_test"
+      ]
+    }
+  ]
+}
