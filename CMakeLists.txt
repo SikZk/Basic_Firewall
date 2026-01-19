@@ -14,6 +14,7 @@ add_executable(Basic_Firewall src/main.cpp
         include/routing/RoutingTable.h
         include/configuration/Config.h
         include/policies/Policy.h
+        include/policies/UrlFilteringPolicy.h
         src/utils.cpp
         src/configuration/Config.cpp
         src/session/sessions/Session.cpp
@@ -28,6 +29,7 @@ add_executable(Basic_Firewall src/main.cpp
         src/policies/Policy.cpp
         src/policies/SecurityPolicy.cpp
         src/policies/NatPolicy.cpp
+        src/policies/UrlFilteringPolicy.cpp
         src/policies/NatService.cpp
         src/routing/RoutingTable.cpp
         src/routing/RoutingEngine.cpp

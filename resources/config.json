@@ -74,5 +74,20 @@
       "dest_port": 0,
       "action": "allow"
     }
+  ],
+  "url_filtering_policies": [
+    {
+      "src_network": "10.2.0.0",
+      "src_mask": 24,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "src_port": 0,
+      "dest_port": 0,
+      "blocked_urls": [
+        "example.com",
+        "bad.example.com/login",
+        "https://tracker.example.net/collect"
+      ]
+    }
   ]
 }

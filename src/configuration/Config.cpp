@@ -162,6 +162,48 @@ void Config::parseTlsMitm(const boost::json::value& object)
     }
 }
 
+void Config::parseUrlFilteringPolicy(const boost::json::value& object)
+{
+    if (!object.is_array()) return;
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string src_net = obj.at("src_network").as_string().c_str();
+        uint32_t src_mask = obj.at("src_mask").as_int64();
+        std::string dst_net = obj.at("dest_network").as_string().c_str();
+        uint32_t dst_mask = obj.at("dest_mask").as_int64();
+        uint16_t src_port = static_cast<uint16_t>(obj.at("src_port").as_int64());
+        uint16_t dst_port = static_cast<uint16_t>(obj.at("dest_port").as_int64());
+
+        std::vector<std::string> blocked_urls;
+        if (auto it = obj.find("blocked_urls"); it != obj.end() && it->value().is_array()) {
+            for (const auto& url_entry : it->value().as_array()) {
+                if (url_entry.is_string()) {
+                    blocked_urls.emplace_back(url_entry.as_string().c_str());
+                }
+            }
+        } else if (auto it = obj.find("urls"); it != obj.end() && it->value().is_array()) {
+            for (const auto& url_entry : it->value().as_array()) {
+                if (url_entry.is_string()) {
+                    blocked_urls.emplace_back(url_entry.as_string().c_str());
+                }
+            }
+        }
+
+        url_filtering_policies.emplace_back(
+            src_net,
+            src_mask,
+            dst_net,
+            dst_mask,
+            src_port,
+            dst_port,
+            std::move(blocked_urls)
+        );
+    }
+}
+
 void Config::loadFromFile(const std::string& filepath)
 {
     std::ifstream file(filepath);
@@ -183,6 +225,7 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
         if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
         if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
+        if (obj.contains("url_filtering_policies")) parseUrlFilteringPolicy(obj.at("url_filtering_policies"));
         if (obj.contains("tls_mitm")) parseTlsMitm(obj.at("tls_mitm"));
 
 

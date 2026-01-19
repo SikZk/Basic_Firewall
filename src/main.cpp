@@ -136,6 +136,154 @@ bool isHttpsPacket(const TcpLayer* tcpLayer)
     return src_port == 443 || dst_port == 443;
 }
 
+std::optional<std::string> extractSniFromTlsClientHello(const uint8_t* data, size_t length)
+{
+    if (!data || length < 5) {
+        return std::nullopt;
+    }
+    if (data[0] != 0x16) {
+        return std::nullopt;
+    }
+    uint16_t record_length = (static_cast<uint16_t>(data[3]) << 8) | data[4];
+    if (record_length + 5 > length) {
+        return std::nullopt;
+    }
+    size_t pos = 5;
+    if (pos + 4 > length || data[pos] != 0x01) {
+        return std::nullopt;
+    }
+    uint32_t handshake_length =
+        (static_cast<uint32_t>(data[pos + 1]) << 16) |
+        (static_cast<uint32_t>(data[pos + 2]) << 8) |
+        data[pos + 3];
+    pos += 4;
+    if (pos + handshake_length > length) {
+        return std::nullopt;
+    }
+    if (pos + 2 + 32 > length) {
+        return std::nullopt;
+    }
+    pos += 2 + 32;
+    if (pos + 1 > length) {
+        return std::nullopt;
+    }
+    uint8_t session_id_len = data[pos];
+    pos += 1 + session_id_len;
+    if (pos + 2 > length) {
+        return std::nullopt;
+    }
+    uint16_t cipher_suites_len = (static_cast<uint16_t>(data[pos]) << 8) | data[pos + 1];
+    pos += 2 + cipher_suites_len;
+    if (pos + 1 > length) {
+        return std::nullopt;
+    }
+    uint8_t compression_len = data[pos];
+    pos += 1 + compression_len;
+    if (pos + 2 > length) {
+        return std::nullopt;
+    }
+    uint16_t extensions_len = (static_cast<uint16_t>(data[pos]) << 8) | data[pos + 1];
+    pos += 2;
+    if (pos + extensions_len > length) {
+        return std::nullopt;
+    }
+    size_t extensions_end = pos + extensions_len;
+    while (pos + 4 <= extensions_end) {
+        uint16_t ext_type = (static_cast<uint16_t>(data[pos]) << 8) | data[pos + 1];
+        uint16_t ext_len = (static_cast<uint16_t>(data[pos + 2]) << 8) | data[pos + 3];
+        pos += 4;
+        if (pos + ext_len > extensions_end) {
+            return std::nullopt;
+        }
+        if (ext_type == 0x0000 && ext_len >= 5) {
+            size_t server_name_list_len = (static_cast<uint16_t>(data[pos]) << 8) | data[pos + 1];
+            size_t list_pos = pos + 2;
+            size_t list_end = list_pos + server_name_list_len;
+            if (list_end > pos + ext_len) {
+                return std::nullopt;
+            }
+            while (list_pos + 3 <= list_end) {
+                uint8_t name_type = data[list_pos];
+                uint16_t name_len = (static_cast<uint16_t>(data[list_pos + 1]) << 8) | data[list_pos + 2];
+                list_pos += 3;
+                if (list_pos + name_len > list_end) {
+                    return std::nullopt;
+                }
+                if (name_type == 0x00 && name_len > 0) {
+                    return std::string(reinterpret_cast<const char*>(data + list_pos), name_len);
+                }
+                list_pos += name_len;
+            }
+        }
+        pos += ext_len;
+    }
+    return std::nullopt;
+}
+
+bool extractHttpHostAndPath(const uint8_t* data, size_t length, std::string& host, std::string& path)
+{
+    if (!data || length == 0) {
+        return false;
+    }
+    constexpr size_t kMaxInspect = 4096;
+    size_t inspect_len = std::min(length, kMaxInspect);
+    std::string payload(reinterpret_cast<const char*>(data), inspect_len);
+    auto line_end = payload.find("\r\n");
+    if (line_end == std::string::npos) {
+        return false;
+    }
+    std::string request_line = payload.substr(0, line_end);
+    auto first_space = request_line.find(' ');
+    auto second_space = request_line.find(' ', first_space == std::string::npos ? 0 : first_space + 1);
+    if (first_space != std::string::npos && second_space != std::string::npos) {
+        path = request_line.substr(first_space + 1, second_space - first_space - 1);
+    }
+
+    std::string lower_payload = payload;
+    std::transform(lower_payload.begin(), lower_payload.end(), lower_payload.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    std::string host_marker = "\r\nhost:";
+    auto host_pos = lower_payload.find(host_marker);
+    if (host_pos == std::string::npos && lower_payload.rfind("host:", 0) == 0) {
+        host_pos = 0;
+    }
+    if (host_pos != std::string::npos) {
+        size_t value_start = host_pos == 0 ? 5 : host_pos + host_marker.size();
+        while (value_start < payload.size() && (payload[value_start] == ' ' || payload[value_start] == '\t')) {
+            ++value_start;
+        }
+        auto value_end = payload.find("\r\n", value_start);
+        if (value_end != std::string::npos && value_end > value_start) {
+            host = payload.substr(value_start, value_end - value_start);
+        }
+    }
+
+    if (host.empty() && !path.empty()) {
+        std::string lower_path = path;
+        std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+        std::string scheme = "http://";
+        if (lower_path.rfind(scheme, 0) == 0) {
+            auto host_start = scheme.size();
+            auto slash = lower_path.find('/', host_start);
+            host = path.substr(host_start, slash == std::string::npos ? std::string::npos : slash - host_start);
+            path = slash == std::string::npos ? "/" : path.substr(slash);
+        } else {
+            scheme = "https://";
+            if (lower_path.rfind(scheme, 0) == 0) {
+                auto host_start = scheme.size();
+                auto slash = lower_path.find('/', host_start);
+                host = path.substr(host_start, slash == std::string::npos ? std::string::npos : slash - host_start);
+                path = slash == std::string::npos ? "/" : path.substr(slash);
+            }
+        }
+    }
+
+    return !host.empty();
+}
+
 bool shouldDecryptTraffic(const IPv4Layer& ipLayer)
 {
     for (const auto& profile : configuration.decryption_profiles) {
@@ -216,6 +364,48 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
         if (payloadLen > 0) {
             decryptSession->processEncryptedData(payload, payloadLen);
             logDecryptedHttpIfReady(*decryptSession);
+        }
+    }
+
+    if (!configuration.url_filtering_policies.empty() && tcpLayer) {
+        const uint8_t* payload = tcpLayer->getLayerPayload();
+        size_t payloadLen = tcpLayer->getLayerPayloadSize();
+        std::string httpHost;
+        std::string httpPath;
+        bool hasHttpIndicator = extractHttpHostAndPath(payload, payloadLen, httpHost, httpPath);
+        std::optional<std::string> sniHost;
+        if (isHttpsPacket(tcpLayer)) {
+            sniHost = extractSniFromTlsClientHello(payload, payloadLen);
+        }
+
+        if (hasHttpIndicator || (sniHost && !sniHost->empty())) {
+            for (const auto& policy : configuration.url_filtering_policies) {
+                if (!policy.does_match_policy(*ipLayer)) {
+                    continue;
+                }
+                bool blocked = false;
+                if (hasHttpIndicator) {
+                    blocked = policy.isBlockedUrl(httpHost, httpPath);
+                }
+                if (!blocked && sniHost) {
+                    blocked = policy.isBlockedHost(*sniHost);
+                }
+                if (blocked) {
+                    std::cout << "[URL FILTER] Dropped packet: "
+                              << ipLayer->getSrcIPv4Address().toString()
+                              << " -> " << ipLayer->getDstIPv4Address().toString();
+                    if (!httpHost.empty()) {
+                        std::cout << " host=" << httpHost;
+                    } else if (sniHost) {
+                        std::cout << " sni=" << *sniHost;
+                    }
+                    if (!httpPath.empty()) {
+                        std::cout << " path=" << httpPath;
+                    }
+                    std::cout << std::endl;
+                    return;
+                }
+            }
         }
     }
 

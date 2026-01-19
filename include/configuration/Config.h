@@ -5,6 +5,7 @@
 #include <pcapplusplus/PcapLiveDevice.h>
 #include "../policies/SecurityPolicy.h"
 #include "../policies/NatPolicy.h"
+#include "../policies/UrlFilteringPolicy.h"
 #include "../decryption/DecryptionProfile.h"
 #include "../routing/RoutingTable.h"
 
@@ -14,6 +15,7 @@ class Config {
         std::vector<DecryptionProfile> decryption_profiles;
         std::vector<SecurityPolicy> security_policies;
         std::vector<NatPolicy> nat_policies;
+        std::vector<UrlFilteringPolicy> url_filtering_policies;
         std::vector<std::string> malware_hashes;
         RoutingTable routing_table;
         std::vector<std::string> interface_names;
@@ -34,6 +36,7 @@ class Config {
         void parseSecurityPolicy(const boost::json::value& object);
         void parseNatPolicy(const boost::json::value& object);
         void parseRoutingTable(const boost::json::value& object);
+        void parseUrlFilteringPolicy(const boost::json::value& object);
         void parseTlsMitm(const boost::json::value& object);
         void loadFromFile(const std::string& filepath);
         void parseInterfaces(const boost::json::value& object);
