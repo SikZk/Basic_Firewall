@@ -195,6 +195,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     if (!ipLayer) return;
 
     TcpLayer* tcpLayer = packet.getLayerOfType<TcpLayer>();
+    DecryptionSession* decryptSession = nullptr;
     if (tcpLayer && isHttpsPacket(tcpLayer) && shouldDecryptTraffic(*ipLayer)) {
         const auto* tcpHeader = tcpLayer->getTcpHeader();
         SessionFlowKey decryptKey = getKeyFromPacket(packet);
@@ -210,7 +211,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
             existing = &decryptionSessionTable.createSession(decryptKey, std::move(newSession));
         }
 
-        auto* decryptSession = static_cast<DecryptionSession*>(existing);
+        decryptSession = static_cast<DecryptionSession*>(existing);
         const uint8_t* payload = tcpLayer->getLayerPayload();
         size_t payloadLen = tcpLayer->getLayerPayloadSize();
         if (payloadLen > 0) {
@@ -219,8 +220,10 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
         }
     }
 
+    const SecurityPolicy* matched_policy = nullptr;
     for (const auto& policy : configuration.security_policies) {
         if (policy.does_match_policy(*ipLayer)) {
+            matched_policy = &policy;
             if (!policy.allowsPacket()) {
                 std::cout << "[SECURITY] Dropped packet: "
                           << ipLayer->getSrcIPv4Address().toString()
@@ -229,6 +232,27 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
                 return;
             }
             break;
+        }
+    }
+
+    if (matched_policy && !matched_policy->security_profiles.empty()) {
+        for (const auto& profile : matched_policy->security_profiles) {
+            if (!profile) {
+                continue;
+            }
+            Action profile_action = ALLOW;
+            if (decryptSession) {
+                profile_action = profile->scan(*decryptSession, *ipLayer);
+            } else {
+                profile_action = profile->scan(nullptr, *ipLayer);
+            }
+            if (profile_action == BLOCK) {
+                std::cout << "[SECURITY] Dropped packet by security profile: "
+                          << ipLayer->getSrcIPv4Address().toString()
+                          << " -> " << ipLayer->getDstIPv4Address().toString()
+                          << std::endl;
+                return;
+            }
         }
     }
 
