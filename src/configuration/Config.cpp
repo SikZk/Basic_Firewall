@@ -31,7 +31,35 @@ std::vector<pcpp::PcapLiveDevice*> Config::getCaptureInterfaces()
     return vector;
 }
 
-void Config::parseDecryptionProfile(const boost::json::value& object) { (void)object; };
+void Config::parseDecryptionProfile(const boost::json::value& object)
+{
+    if (!object.is_array()) return;
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string name = obj.at("name").as_string().c_str();
+        std::string ca_cert = obj.at("ca_certificate_path").as_string().c_str();
+        std::string ca_key = obj.at("ca_private_key_path").as_string().c_str();
+        std::string src_net = obj.at("src_network").as_string().c_str();
+        uint32_t src_mask = obj.at("src_mask").as_int64();
+        std::string dst_net = obj.at("dest_network").as_string().c_str();
+        uint32_t dst_mask = obj.at("dest_mask").as_int64();
+
+        DecryptionProfile profile(
+            name,
+            ca_cert,
+            ca_key,
+            src_net,
+            src_mask,
+            dst_net,
+            dst_mask
+        );
+        profile.should_decrypt = profile.loadCryptoMaterial();
+        decryption_profiles.emplace_back(std::move(profile));
+    }
+}
 
 // --- Parsowanie Security Policy z JSON ---
 void Config::parseSecurityPolicy(const boost::json::value& object)
@@ -188,6 +216,18 @@ void Config::parseRoutingTable(const boost::json::value& object)
     }
 };
 
+void Config::parseTlsMitm(const boost::json::value& object)
+{
+    if (!object.is_object()) return;
+    const auto& obj = object.as_object();
+    if (auto it = obj.find("enabled"); it != obj.end() && it->value().is_bool()) {
+        tls_mitm_enabled = it->value().as_bool();
+    }
+    if (auto it = obj.find("listen_port"); it != obj.end() && it->value().is_int64()) {
+        tls_mitm_port = static_cast<uint16_t>(it->value().as_int64());
+    }
+}
+
 void Config::loadFromFile(const std::string& filepath)
 {
     std::ifstream file(filepath);
@@ -210,6 +250,9 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("url_filtering_profiles")) parseUrlFilteringProfile(obj.at("url_filtering_profiles"));
         if (obj.contains("antimalware_profiles")) parseAntimalwareProfile(obj.at("antimalware_profiles"));
         if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
+        if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
+        if (obj.contains("tls_mitm")) parseTlsMitm(obj.at("tls_mitm"));
+
 
     } catch (...) {}
 };

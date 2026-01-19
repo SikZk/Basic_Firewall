@@ -29,6 +29,11 @@ void DecryptionSession::processEncryptedData(const uint8_t* payload, size_t leng
     }
     decrypted_buffer.insert(decrypted_buffer.end(), payload, payload + length);
     std::cout << "[Decryption] Buffered " << length << " bytes (no-op)." << std::endl;
+    if (!warned_encrypted) {
+        warned_encrypted = true;
+        std::cout << "[Decryption] TLS payload still encrypted. Transparent TLS MITM is not implemented yet."
+                  << std::endl;
+    }
 }
 
 bool DecryptionSession::hasCompleteHttpHeader() const

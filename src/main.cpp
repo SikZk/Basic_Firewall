@@ -12,6 +12,8 @@
 #include <optional>
 #include <algorithm>
 #include <cstring>
+#include <memory>
+#include <cstdlib>
 
 // Include Boost headers
 #include <boost/json.hpp>
@@ -40,6 +42,8 @@
 #include "utils.h"
 #include "../include/routing/RoutingEngine.h"
 #include "../include/policies/NatService.h"
+#include "../include/session/session_tables/DecryptionSessionTable.h"
+#include "../include/decryption/TlsMitmProxy.h"
 
 using namespace pcpp;
 
@@ -49,11 +53,36 @@ static Config configuration("../resources/config.json");
 static RoutingEngine routingEngine;
 static std::vector<PcapLiveDevice*> gInterfaces;
 static NatService natService;
+static DecryptionSessionTable decryptionSessionTable;
+static std::unique_ptr<TlsMitmProxy> tlsMitmProxy;
 
 const IPv4Address EXTERNAL_IP("192.168.1.39");
 
+bool runCommand(const std::string& command)
+{
+    int result = std::system(command.c_str());
+    return result == 0;
+}
+
+void configureTlsMitmRedirect(uint16_t port, bool enable)
+{
+    std::string action = enable ? "-A" : "-D";
+    std::string base = "iptables -t nat " + action +
+                       " PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports " +
+                       std::to_string(port);
+    if (!runCommand(base)) {
+        std::cerr << "[TLS MITM] Failed to update iptables redirect rule: " << base << std::endl;
+    }
+}
+
 static void exitProgram(int) {
     stopSignal = 1;
+    if (tlsMitmProxy) {
+        tlsMitmProxy->stop();
+    }
+    if (configuration.tls_mitm_enabled) {
+        configureTlsMitmRedirect(configuration.tls_mitm_port, false);
+    }
     for (auto* dev : gInterfaces) {
         if (dev && dev->isOpened())
             dev->stopCapture();
@@ -93,6 +122,44 @@ bool isInternalNetwork(const IPv4Address& ip) {
     return ip.toString().rfind("10.", 0) == 0;
 }
 
+bool isHttpsPacket(const TcpLayer* tcpLayer)
+{
+    if (!tcpLayer) {
+        return false;
+    }
+    const auto* header = tcpLayer->getTcpHeader();
+    if (!header) {
+        return false;
+    }
+    uint16_t src_port = ntohs(header->portSrc);
+    uint16_t dst_port = ntohs(header->portDst);
+    return src_port == 443 || dst_port == 443;
+}
+
+bool shouldDecryptTraffic(const IPv4Layer& ipLayer)
+{
+    for (const auto& profile : configuration.decryption_profiles) {
+        if (!profile.shouldDecrypt()) {
+            continue;
+        }
+        if (profile.matchesEndpoints(ipLayer.getSrcIPv4Address(), ipLayer.getDstIPv4Address())) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void logDecryptedHttpIfReady(DecryptionSession& session)
+{
+    if (!session.hasCompleteHttpHeader()) {
+        return;
+    }
+    const auto data = session.getDecryptedDataAsString();
+    std::cout << "[HTTPS Decrypt] HTTP payload:" << std::endl;
+    std::cout << data << std::endl;
+    session.clearBuffer();
+}
+
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 {
     if (!rawPacket || !inDev) return;
@@ -126,6 +193,31 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     IPv4Layer* ipLayer = packet.getLayerOfType<IPv4Layer>();
     if (!ipLayer) return;
+
+    TcpLayer* tcpLayer = packet.getLayerOfType<TcpLayer>();
+    if (tcpLayer && isHttpsPacket(tcpLayer) && shouldDecryptTraffic(*ipLayer)) {
+        const auto* tcpHeader = tcpLayer->getTcpHeader();
+        SessionFlowKey decryptKey = getKeyFromPacket(packet);
+        auto* existing = decryptionSessionTable.findSession(decryptKey);
+        if (!existing) {
+            DecryptionSession newSession(
+                inDev->getIPv4Address(),
+                ipLayer->getSrcIPv4Address(),
+                ntohs(tcpHeader->portSrc),
+                ipLayer->getDstIPv4Address(),
+                ntohs(tcpHeader->portDst)
+            );
+            existing = &decryptionSessionTable.createSession(decryptKey, std::move(newSession));
+        }
+
+        auto* decryptSession = static_cast<DecryptionSession*>(existing);
+        const uint8_t* payload = tcpLayer->getLayerPayload();
+        size_t payloadLen = tcpLayer->getLayerPayloadSize();
+        if (payloadLen > 0) {
+            decryptSession->processEncryptedData(payload, payloadLen);
+            logDecryptedHttpIfReady(*decryptSession);
+        }
+    }
 
     for (const auto& policy : configuration.security_policies) {
         if (policy.does_match_policy(*ipLayer)) {
@@ -235,6 +327,11 @@ int main()
     std::signal(SIGTERM, exitProgram);
 
     configuration.load();
+    if (configuration.tls_mitm_enabled) {
+        tlsMitmProxy = std::make_unique<TlsMitmProxy>(configuration);
+        tlsMitmProxy->start();
+        configureTlsMitmRedirect(configuration.tls_mitm_port, true);
+    }
     NatPolicy::configureNatState(10000, 20000);
 
     auto interfaces = configuration.getCaptureInterfaces();

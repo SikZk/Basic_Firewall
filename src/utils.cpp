@@ -121,7 +121,7 @@ Session* createOrGetSession(
     return &sessionTable.createSession(key, std::move(session));
 }
 
-DecryptionSession createOrGetDecryptionSession(
+DecryptionSession* createOrGetDecryptionSession(
     DecryptionSessionTable &decryptionSessionTable,
     const SessionFlowKey& key,
     Session* session,
@@ -129,7 +129,7 @@ DecryptionSession createOrGetDecryptionSession(
 )
 {
     if (auto* existing = decryptionSessionTable.findSession(key)) {
-        return *static_cast<DecryptionSession*>(existing);
+        return static_cast<DecryptionSession*>(existing);
     }
     DecryptionSession new_session(
         session->getSourceToDestinationFlow().internal_ip,
@@ -138,7 +138,7 @@ DecryptionSession createOrGetDecryptionSession(
         session->getSourceToDestinationFlow().external_ip,
         session->getSourceToDestinationFlow().external_port
     );
-    return static_cast<DecryptionSession&>(decryptionSessionTable.createSession(key, std::move(new_session)));
+    return static_cast<DecryptionSession*>(&decryptionSessionTable.createSession(key, std::move(new_session)));
 }
 
 NatSession createOrGetNatSession(

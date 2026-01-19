@@ -63,6 +63,7 @@ Session* createOrGetSession(
 );
 void sendTcpRst(pcpp::Packet& packet, pcpp::PcapLiveDevice* outInterface);
 DecryptionSession createOrGetDecryptionSession(
+DecryptionSession* createOrGetDecryptionSession(
    DecryptionSessionTable &decryptionSessionTable,
    const SessionFlowKey& key,
    Session* session,
