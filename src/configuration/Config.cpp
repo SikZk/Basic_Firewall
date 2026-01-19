@@ -185,6 +185,7 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
         if (obj.contains("tls_mitm")) parseTlsMitm(obj.at("tls_mitm"));
 
+
     } catch (...) {}
 };
 
