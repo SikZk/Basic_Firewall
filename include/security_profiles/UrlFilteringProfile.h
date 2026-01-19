@@ -7,10 +7,15 @@
 #include "SecurityProfile.h"
 #include <unordered_set>
 #include <vector>
+#include <string>
 
 class UrlFilteringProfile : public SecurityProfile {
     private:
         std::unordered_set<std::string> blocked_domains;
+        bool shouldBlockHost(const std::string& host) const;
+        static std::string normalizeHost(std::string host);
+        static std::string extractHostFromHttp(const std::string& payload);
+        static std::string extractHostFromTlsSni(const uint8_t* payload, size_t length);
 
     public:
         explicit UrlFilteringProfile(const std::vector<std::string>& domains_to_block);

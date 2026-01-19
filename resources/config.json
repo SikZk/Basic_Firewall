@@ -72,7 +72,15 @@
       "dest_mask": 0,
       "src_port": 0,
       "dest_port": 0,
-      "action": "allow"
+      "action": "allow",
+      "security_profiles": {
+        "url_filtering": {
+          "blocked_domains": [
+            "example.com",
+            "bad.example.org"
+          ]
+        }
+      }
     }
   ]
 }

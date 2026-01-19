@@ -6,6 +6,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include "../../include/security_profiles/UrlFilteringProfile.h"
 
 void Config::load()
 {
@@ -90,6 +91,34 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
             action = SecurityPolicy::Action::Allow;
         }
 
+        std::vector<std::shared_ptr<SecurityProfile>> profiles;
+        if (auto it = obj.find("security_profiles"); it != obj.end() && it->value().is_object()) {
+            const auto& profiles_obj = it->value().as_object();
+            if (auto url_it = profiles_obj.find("url_filtering"); url_it != profiles_obj.end()) {
+                std::vector<std::string> blocked_domains;
+                const auto& url_val = url_it->value();
+                if (url_val.is_array()) {
+                    for (const auto& entry : url_val.as_array()) {
+                        if (entry.is_string()) {
+                            blocked_domains.emplace_back(entry.as_string().c_str());
+                        }
+                    }
+                } else if (url_val.is_object()) {
+                    const auto& url_obj = url_val.as_object();
+                    if (auto blocked_it = url_obj.find("blocked_domains"); blocked_it != url_obj.end() && blocked_it->value().is_array()) {
+                        for (const auto& entry : blocked_it->value().as_array()) {
+                            if (entry.is_string()) {
+                                blocked_domains.emplace_back(entry.as_string().c_str());
+                            }
+                        }
+                    }
+                }
+                if (!blocked_domains.empty()) {
+                    profiles.push_back(std::make_shared<UrlFilteringProfile>(blocked_domains));
+                }
+            }
+        }
+
         security_policies.emplace_back(
             src_net,
             src_mask,
@@ -98,7 +127,7 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
             src_port,
             dst_port,
             action,
-            std::vector<std::shared_ptr<SecurityProfile>>{}
+            profiles
         );
     }
 
