@@ -4,6 +4,8 @@
 #include <boost/json/src.hpp>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
+#include <cctype>
 
 void Config::load()
 {
@@ -32,6 +34,57 @@ std::vector<pcpp::PcapLiveDevice*> Config::getCaptureInterfaces()
 void Config::parseDecryptionProfile(const boost::json::value& object) { (void)object; };
 
 // --- Parsowanie Security Policy z JSON ---
+void Config::parseSecurityPolicy(const boost::json::value& object)
+{
+    if (!object.is_array()) return;
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string src_net = obj.at("src_network").as_string().c_str();
+        uint32_t src_mask = obj.at("src_mask").as_int64();
+        std::string dst_net = obj.at("dest_network").as_string().c_str();
+        uint32_t dst_mask = obj.at("dest_mask").as_int64();
+        uint16_t src_port = static_cast<uint16_t>(obj.at("src_port").as_int64());
+        uint16_t dst_port = static_cast<uint16_t>(obj.at("dest_port").as_int64());
+
+        std::string action_str = "deny";
+        if (auto it = obj.find("action"); it != obj.end() && it->value().is_string()) {
+            action_str = std::string(it->value().as_string());
+        }
+        std::transform(action_str.begin(), action_str.end(), action_str.begin(), [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+
+        SecurityPolicy::Action action = SecurityPolicy::Action::Deny;
+        if (action_str == "allow") {
+            action = SecurityPolicy::Action::Allow;
+        }
+
+        security_policies.emplace_back(
+            src_net,
+            src_mask,
+            dst_net,
+            dst_mask,
+            src_port,
+            dst_port,
+            action,
+            std::vector<std::shared_ptr<SecurityProfile>>{}
+        );
+    }
+
+    security_policies.emplace_back(
+        "0.0.0.0",
+        0,
+        "0.0.0.0",
+        0,
+        0,
+        0,
+        SecurityPolicy::Action::Deny,
+        std::vector<std::shared_ptr<SecurityProfile>>{}
+    );
+}
 
 // --- Parsowanie NAT Policy z JSON ---
 void Config::parseNatPolicy(const boost::json::value& object) {
@@ -88,6 +141,7 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("routes")) parseRoutingTable(obj.at("routes"));
         // Dodane parsowanie nowych sekcji
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
+        if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
 
     } catch (...) {}
 };
