@@ -31,7 +31,47 @@ std::vector<pcpp::PcapLiveDevice*> Config::getCaptureInterfaces()
     return vector;
 }
 
-void Config::parseDecryptionProfile(const boost::json::value& object) { (void)object; };
+void Config::parseDecryptionProfile(const boost::json::value& object)
+{
+    if (!object.is_array()) return;
+
+    for (const auto& entry : object.as_array()) {
+        if (!entry.is_object()) continue;
+        const auto& obj = entry.as_object();
+
+        std::string profile_name = "default";
+        if (auto it = obj.find("name"); it != obj.end() && it->value().is_string()) {
+            profile_name = std::string(it->value().as_string());
+        }
+
+        std::string src_net = obj.at("src_network").as_string().c_str();
+        uint32_t src_mask = obj.at("src_mask").as_int64();
+        std::string dst_net = obj.at("dest_network").as_string().c_str();
+        uint32_t dst_mask = obj.at("dest_mask").as_int64();
+
+        std::string ca_cert_path;
+        if (auto it = obj.find("ca_cert_path"); it != obj.end() && it->value().is_string()) {
+            ca_cert_path = std::string(it->value().as_string());
+        }
+        std::string ca_key_path;
+        if (auto it = obj.find("ca_key_path"); it != obj.end() && it->value().is_string()) {
+            ca_key_path = std::string(it->value().as_string());
+        }
+
+        DecryptionProfile profile(
+            profile_name,
+            ca_cert_path,
+            ca_key_path,
+            src_net,
+            src_mask,
+            dst_net,
+            dst_mask
+        );
+        profile.should_decrypt = true;
+        profile.loadCryptoMaterial();
+        decryption_profiles.emplace_back(std::move(profile));
+    }
+};
 
 // --- Parsowanie Security Policy z JSON ---
 void Config::parseSecurityPolicy(const boost::json::value& object)
@@ -142,6 +182,7 @@ void Config::loadFromFile(const std::string& filepath)
         // Dodane parsowanie nowych sekcji
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
         if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
+        if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
 
     } catch (...) {}
 };

@@ -40,6 +40,8 @@
 #include "utils.h"
 #include "../include/routing/RoutingEngine.h"
 #include "../include/policies/NatService.h"
+#include "../include/session/session_tables/SessionTable.h"
+#include "../include/session/session_tables/DecryptionSessionTable.h"
 
 using namespace pcpp;
 
@@ -49,6 +51,8 @@ static Config configuration("../resources/config.json");
 static RoutingEngine routingEngine;
 static std::vector<PcapLiveDevice*> gInterfaces;
 static NatService natService;
+static SessionTable sessionTable;
+static DecryptionSessionTable decryptionSessionTable;
 
 const IPv4Address EXTERNAL_IP("192.168.1.39");
 
@@ -91,6 +95,19 @@ SessionFlowKey getKeyFromPacket(Packet& packet) {
 
 bool isInternalNetwork(const IPv4Address& ip) {
     return ip.toString().rfind("10.", 0) == 0;
+}
+
+const DecryptionProfile* findMatchingDecryptionProfile(
+    const Session& session,
+    const std::vector<DecryptionProfile>& profiles
+)
+{
+    for (const auto& profile : profiles) {
+        if (profile.doesMatchProfile(session)) {
+            return &profile;
+        }
+    }
+    return nullptr;
 }
 
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
@@ -137,6 +154,41 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
                 return;
             }
             break;
+        }
+    }
+
+    TcpLayer* tcpLayer = packet.getLayerOfType<TcpLayer>();
+    if (tcpLayer && tcpLayer->getLayerPayloadSize() > 0) {
+        SessionFlowKey sessionKey = getSessionFlowKey(ipLayer, tcpLayer);
+        Session* session = createOrGetSession(sessionTable, sessionKey, ipLayer, tcpLayer, inDev);
+        const DecryptionProfile* profile = findMatchingDecryptionProfile(*session, configuration.decryption_profiles);
+
+        uint16_t src_port = ntohs(tcpLayer->getTcpHeader()->portSrc);
+        uint16_t dst_port = ntohs(tcpLayer->getTcpHeader()->portDst);
+        bool is_https = (src_port == 443 || dst_port == 443);
+
+        if (profile && profile->shouldDecrypt() && is_https) {
+            if (!profile->ca_cert || !profile->ca_private_key) {
+                std::cout << "[Decryption] Warning: profile '" << profile->profile_name
+                          << "' missing CA material, logging without TLS replacement." << std::endl;
+            }
+
+            DecryptionSession* decrypt_session = createOrGetDecryptionSession(
+                decryptionSessionTable,
+                sessionKey,
+                session,
+                *profile
+            );
+
+            const uint8_t* payload = tcpLayer->getLayerPayload();
+            size_t payload_length = tcpLayer->getLayerPayloadSize();
+            decrypt_session->processEncryptedData(payload, payload_length);
+
+            if (decrypt_session->hasCompleteHttpHeader()) {
+                std::cout << "[Decryption] HTTP message (" << profile->profile_name << "):\n"
+                          << decrypt_session->getDecryptedDataAsString() << std::endl;
+                decrypt_session->clearBuffer();
+            }
         }
     }
 

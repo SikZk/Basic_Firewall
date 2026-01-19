@@ -31,8 +31,10 @@ class DecryptionProfile {
         bool doesMatchProfile(Session const& session) const;
         uint8_t* decrypt();
     private:
-        pcpp::IPv4Network network_from;
-        pcpp::IPv4Network network_to;
+        pcpp::IPv4Address network_from_address;
+        uint32_t network_from_mask;
+        pcpp::IPv4Address network_to_address;
+        uint32_t network_to_mask;
    };
 
 

@@ -59,5 +59,16 @@
       "dest_port": 0,
       "action": "allow"
     }
+  ],
+  "decryption_profiles": [
+    {
+      "name": "https-outbound",
+      "src_network": "10.2.0.0",
+      "src_mask": 24,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "ca_cert_path": "../resources/certs/ca.pem",
+      "ca_key_path": "../resources/certs/ca.key"
+    }
   ]
 }
