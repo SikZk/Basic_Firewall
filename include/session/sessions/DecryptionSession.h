@@ -34,6 +34,7 @@ public:
     ~DecryptionSession() = default;
 
     void processEncryptedData(const uint8_t* payload, size_t length);
+    void processDecryptedData(const uint8_t* payload, size_t length);
     bool hasCompleteHttpHeader() const;
     std::string getDecryptedDataAsString() const;
     void clearBuffer();

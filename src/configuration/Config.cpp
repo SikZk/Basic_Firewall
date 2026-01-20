@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include "../../include/security_profiles/UrlFilteringProfile.h"
+#include "../../include/security_profiles/AntimalwareProfile.h"
 
 void Config::load()
 {
@@ -115,6 +116,29 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
                 }
                 if (!blocked_domains.empty()) {
                     profiles.push_back(std::make_shared<UrlFilteringProfile>(blocked_domains));
+                }
+            }
+            if (auto malware_it = profiles_obj.find("antimalware"); malware_it != profiles_obj.end()) {
+                std::vector<std::string> blocked_hashes;
+                const auto& malware_val = malware_it->value();
+                if (malware_val.is_array()) {
+                    for (const auto& entry : malware_val.as_array()) {
+                        if (entry.is_string()) {
+                            blocked_hashes.emplace_back(entry.as_string().c_str());
+                        }
+                    }
+                } else if (malware_val.is_object()) {
+                    const auto& malware_obj = malware_val.as_object();
+                    if (auto blocked_it = malware_obj.find("blocked_hashes"); blocked_it != malware_obj.end() && blocked_it->value().is_array()) {
+                        for (const auto& entry : blocked_it->value().as_array()) {
+                            if (entry.is_string()) {
+                                blocked_hashes.emplace_back(entry.as_string().c_str());
+                            }
+                        }
+                    }
+                }
+                if (!blocked_hashes.empty()) {
+                    profiles.push_back(std::make_shared<AntimalwareProfile>(blocked_hashes));
                 }
             }
         }

@@ -128,6 +128,11 @@ TlsMitmProxy::~TlsMitmProxy()
     stop();
 }
 
+void TlsMitmProxy::setDecryptedDataCallback(DecryptedDataCallback callback)
+{
+    decrypted_data_callback = std::move(callback);
+}
+
 bool TlsMitmProxy::start()
 {
     if (running.load()) return true;
@@ -280,6 +285,7 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
     }
 
     pcpp::IPv4Address src_ip(inet_ntoa(client_addr.sin_addr));
+    uint16_t src_port = ntohs(client_addr.sin_port);
     pcpp::IPv4Address dst_ip(inet_ntoa(dst_addr.sin_addr));
     uint16_t dst_port = ntohs(dst_addr.sin_port);
 
@@ -352,6 +358,9 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
         return;
     }
 
+    std::cout << "[TLS MITM] Decrypting HTTPS traffic for " << servername << " from "
+              << src_ip.toString() << " to " << dst_ip.toString() << ":" << dst_port << std::endl;
+
     std::vector<char> buffer(16 * 1024);
     int client_fd_raw = SSL_get_fd(client_ssl);
     int server_fd_raw = SSL_get_fd(server_ssl);
@@ -372,8 +381,12 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
             if (n <= 0) {
                 active = false;
             } else {
-                std::cout << "[TLS MITM] Client -> Server (" << servername << "): "
-                          << std::string(buffer.data(), buffer.data() + n) << std::endl;
+                if (decrypted_data_callback) {
+                    decrypted_data_callback(src_ip, src_port, dst_ip, dst_port,
+                                            std::string(buffer.data(), buffer.data() + n), true);
+                }
+                std::cout << "[TLS MITM] Client -> Server (" << servername << ") [" << n
+                          << " bytes]: " << std::string(buffer.data(), buffer.data() + n) << std::endl;
                 if (SSL_write(server_ssl, buffer.data(), n) <= 0) {
                     active = false;
                 }
@@ -385,8 +398,12 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
             if (n <= 0) {
                 active = false;
             } else {
-                std::cout << "[TLS MITM] Server -> Client (" << servername << "): "
-                          << std::string(buffer.data(), buffer.data() + n) << std::endl;
+                if (decrypted_data_callback) {
+                    decrypted_data_callback(dst_ip, dst_port, src_ip, src_port,
+                                            std::string(buffer.data(), buffer.data() + n), false);
+                }
+                std::cout << "[TLS MITM] Server -> Client (" << servername << ") [" << n
+                          << " bytes]: " << std::string(buffer.data(), buffer.data() + n) << std::endl;
                 if (SSL_write(client_ssl, buffer.data(), n) <= 0) {
                     active = false;
                 }
