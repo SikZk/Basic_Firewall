@@ -20,6 +20,8 @@ class Config {
         std::pmr::string configuration_file_path;
         bool tls_mitm_enabled = false;
         uint16_t tls_mitm_port = 8443;
+        pcpp::IPv4Address public_ip_addr = pcpp::IPv4Address("192.168.1.39"); // Default fallback
+
 
         Config(std::pmr::string file_path)
             : configuration_file_path(std::move(file_path)) {};
@@ -27,6 +29,9 @@ class Config {
         void load();
 
         std::vector<pcpp::PcapLiveDevice*> getCaptureInterfaces();
+
+        bool shouldDecryptTraffic(const pcpp::IPv4Layer& ipLayer) const;
+
     private:
         // pamiętajmy aby dodać tutaj na końcu profilu decryption_profile.should_decrypt = false; dla wszystkich sesji
         void parseDecryptionProfile(const boost::json::value& object);

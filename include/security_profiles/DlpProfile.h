@@ -15,7 +15,8 @@ class DlpProfile : public SecurityProfile {
     public:
         explicit DlpProfile(const std::vector<std::string>& regex_patterns);
         Action scan(Session* session, const pcpp::IPv4Layer& packet) override;
-        Action scan(const DecryptionSession& session, pcpp::IPv4Layer ipv4_packet) override;
+        Action scan(const DecryptionSession& session, const pcpp::IPv4Layer& ipv4_packet) override;
+
 };
 
 #endif //BASIC_FIREWALL_DLP_PROFILE_H

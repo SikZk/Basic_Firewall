@@ -15,12 +15,13 @@ class UrlFilteringProfile : public SecurityProfile {
         bool shouldBlockHost(const std::string& host) const;
         static std::string normalizeHost(std::string host);
         static std::string extractHostFromHttp(const std::string& payload);
-        static std::string extractHostFromTlsSni(const uint8_t* payload, size_t length);
+
 
     public:
         explicit UrlFilteringProfile(const std::vector<std::string>& domains_to_block);
         Action scan(Session* session, const pcpp::IPv4Layer& packet) override;
-        Action scan(const DecryptionSession& session, pcpp::IPv4Layer ipv4_packet) override;
+        Action scan(const DecryptionSession& session, const pcpp::IPv4Layer& ipv4_packet) override;
+
 };
 
 #endif //BASIC_FIREWALL_URL_FILTERING_PROFILE_H

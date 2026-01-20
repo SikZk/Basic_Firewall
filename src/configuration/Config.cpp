@@ -13,13 +13,24 @@ void Config::load()
 {
     loadFromFile("../resources/config.json");
 
-    // Zabezpieczenie: jeśli w pliku nie było profili deszyfracji, dodaj domyślny,
-    // żeby program się nie wywalił.
     if (decryption_profiles.empty()) {
         decryption_profiles.emplace_back(
             "default", "", "", "0.0.0.0", 0, "0.0.0.0", 0
         );
     }
+}
+
+bool Config::shouldDecryptTraffic(const pcpp::IPv4Layer& ipLayer) const
+{
+    for (const auto& profile : decryption_profiles) {
+        if (!profile.shouldDecrypt()) {
+            continue;
+        }
+        if (profile.matchesEndpoints(ipLayer.getSrcIPv4Address(), ipLayer.getDstIPv4Address())) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::vector<pcpp::PcapLiveDevice*> Config::getCaptureInterfaces()
@@ -232,11 +243,16 @@ void Config::loadFromFile(const std::string& filepath)
 
         if (obj.contains("interfaces")) parseInterfaces(obj.at("interfaces"));
         if (obj.contains("routes")) parseRoutingTable(obj.at("routes"));
-        // Dodane parsowanie nowych sekcji
         if (obj.contains("nat_policies")) parseNatPolicy(obj.at("nat_policies"));
         if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
         if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
         if (obj.contains("tls_mitm")) parseTlsMitm(obj.at("tls_mitm"));
+        
+        if (obj.contains("public_ip")) {
+            std::string ip_str = std::string(obj.at("public_ip").as_string());
+            public_ip_addr = pcpp::IPv4Address(ip_str);
+        }
+
 
 
     } catch (...) {}
@@ -249,7 +265,6 @@ void Config::parseInterfaces(const boost::json::value& object)
     for (const auto& item : object.as_object()) {
         interface_names.emplace_back(item.value().as_string());
     }
-    // Zabezpieczenie: upewnij się, że ens34 jest na liście, jeśli user zapomni
     bool hasEns34 = false;
     for(const auto& s : interface_names) if(s == "ens34") hasEns34 = true;
     if(!hasEns34) interface_names.push_back("ens34");

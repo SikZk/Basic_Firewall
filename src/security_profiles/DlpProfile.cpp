@@ -15,7 +15,8 @@ Action DlpProfile::scan(Session*, const pcpp::IPv4Layer&)
     return ALLOW;
 }
 
-Action DlpProfile::scan(const DecryptionSession&, pcpp::IPv4Layer)
+Action DlpProfile::scan(const DecryptionSession&, const pcpp::IPv4Layer&)
+
 {
     std::cout << "[DLP] No-op scan (decrypted)." << std::endl;
     return ALLOW;

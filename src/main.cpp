@@ -9,18 +9,10 @@
 #include <cstdio>
 #include <unordered_set>
 #include <mutex>
-#include <optional>
 #include <algorithm>
-#include <cstring>
 #include <memory>
-#include <cstdlib>
-
-// Include Boost headers
 #include <boost/json.hpp>
-#include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
-
-// Include PcapPlusPlus headers
 #include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/RawPacket.h"
@@ -29,17 +21,12 @@
 #include "pcapplusplus/IPv4Layer.h"
 #include "pcapplusplus/TcpLayer.h"
 #include "pcapplusplus/IcmpLayer.h"
-#include "pcapplusplus/ArpLayer.h"
 
-// --- 2. Apply the Access Hack ---
-#define private public
 #include "../include/configuration/Config.h"
-#undef private
-// --- 3. End Access Hack ---
 
 #include <netinet/in.h>
 
-#include "utils.h"
+#include "../include/utils.h"
 #include "../include/routing/RoutingEngine.h"
 #include "../include/policies/NatService.h"
 #include "../include/session/session_tables/DecryptionSessionTable.h"
@@ -60,6 +47,7 @@ const IPv4Address EXTERNAL_IP("192.168.1.39");
 
 bool runCommand(const std::string& command)
 {
+
     int result = std::system(command.c_str());
     return result == 0;
 }
@@ -89,65 +77,8 @@ static void exitProgram(int) {
     }
 }
 
-SessionFlowKey getKeyFromPacket(Packet& packet) {
-    IPv4Layer* ip = packet.getLayerOfType<IPv4Layer>();
-    TcpLayer* tcp = packet.getLayerOfType<TcpLayer>();
-    IcmpLayer* icmp = packet.getLayerOfType<IcmpLayer>();
 
-    SessionFlowKey key;
-    if (!ip) return key;
 
-    key.src_ip = ip->getSrcIPv4Address();
-    key.dst_ip = ip->getDstIPv4Address();
-
-    if (tcp) {
-        key.protocol = pcpp::TCP;
-        key.src_port = ntohs(tcp->getTcpHeader()->portSrc);
-        key.dst_port = ntohs(tcp->getTcpHeader()->portDst);
-    } else if (icmp) {
-        key.protocol = pcpp::ICMP;
-        uint16_t id = 0;
-        if (icmp->getData() && icmp->getDataLen() >= 6) {
-            id = ntohs(*reinterpret_cast<uint16_t*>(icmp->getData() + 4));
-        }
-        key.src_port = id;
-        key.dst_port = id;
-    } else {
-        key.protocol = pcpp::PacketTrailer;
-    }
-    return key;
-}
-
-bool isInternalNetwork(const IPv4Address& ip) {
-    return ip.toString().rfind("10.", 0) == 0;
-}
-
-bool isHttpsPacket(const TcpLayer* tcpLayer)
-{
-    if (!tcpLayer) {
-        return false;
-    }
-    const auto* header = tcpLayer->getTcpHeader();
-    if (!header) {
-        return false;
-    }
-    uint16_t src_port = ntohs(header->portSrc);
-    uint16_t dst_port = ntohs(header->portDst);
-    return src_port == 443 || dst_port == 443;
-}
-
-bool shouldDecryptTraffic(const IPv4Layer& ipLayer)
-{
-    for (const auto& profile : configuration.decryption_profiles) {
-        if (!profile.shouldDecrypt()) {
-            continue;
-        }
-        if (profile.matchesEndpoints(ipLayer.getSrcIPv4Address(), ipLayer.getDstIPv4Address())) {
-            return true;
-        }
-    }
-    return false;
-}
 
 void logDecryptedHttpIfReady(DecryptionSession& session)
 {
@@ -162,15 +93,11 @@ void logDecryptedHttpIfReady(DecryptionSession& session)
 
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 {
+
     if (!rawPacket || !inDev) return;
 
-    // --- KLUCZOWA ZMIANA ---
-    // Tworzymy kopię surowego pakietu.
-    // Dzięki temu mamy własny bufor pamięci, który możemy bezpiecznie modyfikować (NAT)
-    // i który RoutingEngine wyśle dalej.
     RawPacket rawPacketCopy(*rawPacket);
     Packet packet(&rawPacketCopy);
-    // -----------------------
 
     EthLayer* eth = packet.getLayerOfType<EthLayer>();
     if (!eth) return;
@@ -178,10 +105,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     pcpp::MacAddress destMac = eth->getDestMac();
     pcpp::MacAddress myMac = inDev->getMacAddress();
 
-    // Jeśli to NIE jest do nas I NIE jest to Broadcast -> Drop
     if (destMac != myMac && destMac != pcpp::MacAddress::Broadcast) {
-        // Opcjonalnie: Debug log, żebyś widział co odrzucasz
-        // std::cout << "[DROP] Ignoring noise packet not for me. Dst: " << destMac.toString() << std::endl;
         return;
     }
     if (eth->getSourceMac() == inDev->getMacAddress()) return;
@@ -196,7 +120,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     TcpLayer* tcpLayer = packet.getLayerOfType<TcpLayer>();
     DecryptionSession* decryptSession = nullptr;
-    if (tcpLayer && isHttpsPacket(tcpLayer) && shouldDecryptTraffic(*ipLayer)) {
+    if (tcpLayer && isHttpsPacket(tcpLayer) && configuration.shouldDecryptTraffic(*ipLayer)) {
         const auto* tcpHeader = tcpLayer->getTcpHeader();
         SessionFlowKey decryptKey = getKeyFromPacket(packet);
         if (configuration.tls_mitm_enabled) {
@@ -257,6 +181,8 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
                           << ipLayer->getSrcIPv4Address().toString()
                           << " -> " << ipLayer->getDstIPv4Address().toString()
                           << std::endl;
+                
+                sendTcpRst(packet, inDev, routingEngine, natService, configuration.routing_table);
                 return;
             }
         }
@@ -310,21 +236,22 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
         }
     }
 
-    // Wyślij zmodyfikowaną kopię pakietu
-    pcpp::IPv4Layer* finalIpLayer = packet.getLayerOfType<pcpp::IPv4Layer>();
-    // if (finalIpLayer) {
-    //     std::cout << "[FINAL SEND] Packet buffer check: "
-    //               << finalIpLayer->getSrcIPv4Address().toString()
-    //               << " -> "
-    //               << finalIpLayer->getDstIPv4Address().toString()
-    //               << std::endl;
-    // }
     routingEngine.routePacket(packet, inDev, configuration.routing_table);
 }
 
 int main()
 {
     std::cout << "router start (DEEP COPY FIX)\n";
+
+    // --- SYSTEM CONFIGURATION ---
+    std::cout << "[SYSTEM] Disabling Kernel Routing..." << std::endl;
+    runCommand("sudo sysctl -w net.ipv4.ip_forward=0");
+
+    std::cout << "[SYSTEM] Adding iptables rule to drop kernel handling of ports 10000-20000 on ens34..." << std::endl;
+    // Prevent kernel from sending RST for packets delivered to our raw socket
+    runCommand("sudo iptables -A INPUT -i ens34 -p tcp --dport 10000:20000 -j DROP");
+    // ----------------------------
+
     std::signal(SIGINT, exitProgram);
     std::signal(SIGTERM, exitProgram);
 
