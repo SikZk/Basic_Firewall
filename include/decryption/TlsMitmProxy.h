@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -23,6 +24,14 @@ public:
     bool start();
     void stop();
 
+    using DecryptedDataCallback = std::function<void(const pcpp::IPv4Address&,
+                                                     uint16_t,
+                                                     const pcpp::IPv4Address&,
+                                                     uint16_t,
+                                                     const std::string&,
+                                                     bool)>;
+    void setDecryptedDataCallback(DecryptedDataCallback callback);
+
 private:
     Config& config;
     std::atomic<bool> running{false};
@@ -31,6 +40,7 @@ private:
 
     std::mutex cache_mutex;
     std::unordered_map<std::string, std::pair<X509*, EVP_PKEY*>> cert_cache;
+    DecryptedDataCallback decrypted_data_callback;
 
     void acceptLoop();
     void handleClient(int client_fd, sockaddr_in client_addr);

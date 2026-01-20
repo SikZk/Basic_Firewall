@@ -36,6 +36,14 @@ void DecryptionSession::processEncryptedData(const uint8_t* payload, size_t leng
     }
 }
 
+void DecryptionSession::processDecryptedData(const uint8_t* payload, size_t length)
+{
+    if (payload == nullptr || length == 0) {
+        return;
+    }
+    decrypted_buffer.insert(decrypted_buffer.end(), payload, payload + length);
+}
+
 bool DecryptionSession::hasCompleteHttpHeader() const
 {
     const std::string marker = "\r\n\r\n";
