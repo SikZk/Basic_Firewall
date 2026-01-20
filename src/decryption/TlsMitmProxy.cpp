@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <algorithm>
+#include <utility>
 #include <iostream>
 #include <vector>
 
@@ -121,6 +122,11 @@ TlsMitmProxy::TlsMitmProxy(Config& config)
     SSL_library_init();
     SSL_load_error_strings();
     OpenSSL_add_all_algorithms();
+}
+
+void TlsMitmProxy::setDecryptedServerDataCallback(DecryptedDataCallback callback)
+{
+    on_server_decrypted = std::move(callback);
 }
 
 TlsMitmProxy::~TlsMitmProxy()
@@ -281,6 +287,7 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
 
     pcpp::IPv4Address src_ip(inet_ntoa(client_addr.sin_addr));
     pcpp::IPv4Address dst_ip(inet_ntoa(dst_addr.sin_addr));
+    uint16_t src_port = ntohs(client_addr.sin_port);
     uint16_t dst_port = ntohs(dst_addr.sin_port);
 
     const DecryptionProfile* profile = matchProfile(src_ip, dst_ip);
@@ -385,6 +392,11 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
             if (n <= 0) {
                 active = false;
             } else {
+                if (on_server_decrypted) {
+                    on_server_decrypted(dst_ip, dst_port, src_ip, src_port,
+                                        reinterpret_cast<const uint8_t*>(buffer.data()),
+                                        static_cast<size_t>(n));
+                }
                 std::cout << "[TLS MITM] Server -> Client (" << servername << "): "
                           << std::string(buffer.data(), buffer.data() + n) << std::endl;
                 if (SSL_write(client_ssl, buffer.data(), n) <= 0) {

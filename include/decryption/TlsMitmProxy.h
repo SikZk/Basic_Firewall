@@ -12,20 +12,26 @@
 #include <arpa/inet.h>
 
 #include <openssl/ssl.h>
+#include <functional>
 #include <pcapplusplus/IpAddress.h>
 
 #include "../configuration/Config.h"
 class TlsMitmProxy {
-public:
+    public:
     explicit TlsMitmProxy(Config& config);
     ~TlsMitmProxy();
 
     bool start();
     void stop();
+    using DecryptedDataCallback = std::function<void(const pcpp::IPv4Address&, uint16_t,
+                                                     const pcpp::IPv4Address&, uint16_t,
+                                                     const uint8_t*, size_t)>;
+    void setDecryptedServerDataCallback(DecryptedDataCallback callback);
 
 private:
     Config& config;
     std::atomic<bool> running{false};
+    DecryptedDataCallback on_server_decrypted;
     int listen_fd = -1;
     std::thread accept_thread;
 

@@ -14,6 +14,7 @@
 #include <cstring>
 #include <memory>
 #include <cstdlib>
+#include <functional>
 
 // Include Boost headers
 #include <boost/json.hpp>
@@ -55,6 +56,7 @@ static std::vector<PcapLiveDevice*> gInterfaces;
 static NatService natService;
 static DecryptionSessionTable decryptionSessionTable;
 static std::unique_ptr<TlsMitmProxy> tlsMitmProxy;
+static bool tlsMitmActive = false;
 
 const IPv4Address EXTERNAL_IP("192.168.1.39");
 
@@ -87,6 +89,32 @@ static void exitProgram(int) {
         if (dev && dev->isOpened())
             dev->stopCapture();
     }
+}
+
+static void ingestDecryptedHttp(const pcpp::IPv4Address& src_ip,
+                                uint16_t src_port,
+                                const pcpp::IPv4Address& dst_ip,
+                                uint16_t dst_port,
+                                const uint8_t* data,
+                                size_t length)
+{
+    if (!data || length == 0) {
+        return;
+    }
+    SessionFlowKey key = Session::generateSessionFlowKey(src_ip, src_port, dst_ip, dst_port);
+    auto* existing = decryptionSessionTable.findSession(key);
+    if (!existing) {
+        DecryptionSession newSession(
+            EXTERNAL_IP,
+            src_ip,
+            src_port,
+            dst_ip,
+            dst_port
+        );
+        existing = &decryptionSessionTable.createSession(key, std::move(newSession));
+    }
+    auto* session = static_cast<DecryptionSession*>(existing);
+    session->appendDecryptedData(data, length);
 }
 
 SessionFlowKey getKeyFromPacket(Packet& packet) {
@@ -215,8 +243,10 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
         const uint8_t* payload = tcpLayer->getLayerPayload();
         size_t payloadLen = tcpLayer->getLayerPayloadSize();
         if (payloadLen > 0) {
-            decryptSession->processEncryptedData(payload, payloadLen);
-            logDecryptedHttpIfReady(*decryptSession);
+            if (!tlsMitmActive) {
+                decryptSession->processEncryptedData(payload, payloadLen);
+                logDecryptedHttpIfReady(*decryptSession);
+            }
         }
     }
 
@@ -325,8 +355,13 @@ int main()
     configuration.load();
     if (configuration.tls_mitm_enabled) {
         tlsMitmProxy = std::make_unique<TlsMitmProxy>(configuration);
-        tlsMitmProxy->start();
-        configureTlsMitmRedirect(configuration.tls_mitm_port, true);
+        tlsMitmProxy->setDecryptedServerDataCallback(ingestDecryptedHttp);
+        if (tlsMitmProxy->start()) {
+            tlsMitmActive = true;
+            configureTlsMitmRedirect(configuration.tls_mitm_port, true);
+        } else {
+            std::cerr << "[TLS MITM] Failed to start TLS MITM proxy, HTTPS decryption disabled." << std::endl;
+        }
     }
     NatPolicy::configureNatState(10000, 20000);
 

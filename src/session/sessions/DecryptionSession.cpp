@@ -54,3 +54,11 @@ void DecryptionSession::clearBuffer()
 {
     decrypted_buffer.clear();
 }
+
+void DecryptionSession::appendDecryptedData(const uint8_t* payload, size_t length)
+{
+    if (payload == nullptr || length == 0) {
+        return;
+    }
+    decrypted_buffer.insert(decrypted_buffer.end(), payload, payload + length);
+}

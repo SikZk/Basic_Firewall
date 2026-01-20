@@ -37,6 +37,7 @@ public:
     bool hasCompleteHttpHeader() const;
     std::string getDecryptedDataAsString() const;
     void clearBuffer();
+    void appendDecryptedData(const uint8_t* payload, size_t length);
 
 };
 
