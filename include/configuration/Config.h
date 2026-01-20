@@ -20,7 +20,7 @@ class Config {
         std::pmr::string configuration_file_path;
         bool tls_mitm_enabled = false;
         uint16_t tls_mitm_port = 8443;
-        pcpp::IPv4Address public_ip_addr = pcpp::IPv4Address("192.168.1.39"); // Default fallback
+        pcpp::IPv4Address public_ip_addr;
 
 
         Config(std::pmr::string file_path)

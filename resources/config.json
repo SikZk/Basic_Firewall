@@ -1,4 +1,5 @@
 {
+  "public_ip": "192.168.1.39",
   "interfaces": {
     "port1": "ens34",
     "port2": "ens37",

@@ -8,7 +8,9 @@
 #include <netinet/in.h>
 
 #include "pcapplusplus/EthLayer.h"
+#include "pcapplusplus/IPv4Layer.h"
 #include "pcapplusplus/ArpLayer.h"
+#include "pcapplusplus/Packet.h"
 #include "pcapplusplus/SystemUtils.h"
 
 RoutingEngine::RoutingEngine() = default;
@@ -37,7 +39,6 @@ pcpp::PcapLiveDevice* RoutingEngine::findInterfaceByName(const std::string& name
     return (it != interfaces.end()) ? *it : nullptr;
 }
 
-// --- ARP IMPLEMENTATION ---
 
 std::optional<pcpp::MacAddress> RoutingEngine::lookupArp(const std::string& ifName, const pcpp::IPv4Address& ip) {
     std::lock_guard<std::mutex> lock(mtx);
@@ -58,11 +59,8 @@ std::optional<pcpp::MacAddress> RoutingEngine::lookupArp(const std::string& ifNa
 void RoutingEngine::learnArp(const std::string& ifName, const pcpp::IPv4Address& ip, const pcpp::MacAddress& mac) {
     if (ip == pcpp::IPv4Address::Zero || mac == pcpp::MacAddress::Zero) return;
     std::lock_guard<std::mutex> lock(mtx);
-    // Refresh entry
     arpCache[ifName][ip.toInt()] = ArpEntry{ mac, std::chrono::steady_clock::now() + std::chrono::minutes(20) };
 
-    // Uncomment to debug ARP learning
-    // std::cout << "[ARP] Learned " << ip.toString() << " at " << mac.toString() << " on " << ifName << std::endl;
 }
 
 void RoutingEngine::sendArpRequest(pcpp::PcapLiveDevice* outInterface, const pcpp::IPv4Address& targetIp)
@@ -148,7 +146,6 @@ void RoutingEngine::enqueuePending(const std::string& ifName, const pcpp::IPv4Ad
     if (!data || len <= 0) return;
 
     std::lock_guard<std::mutex> lock(mtx);
-    // Simple queue limit per IP to avoid memory exhaustion
     if (pending[ifName][nextHop.toInt()].size() < 10) {
         pending[ifName][nextHop.toInt()].emplace_back(data, data + len);
     }
@@ -167,27 +164,19 @@ void RoutingEngine::processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice*
             sendArpReply(inInterface, arp->getSenderMacAddress(), arp->getSenderIpAddr());
         }
     }
-    // If we learned a MAC we were waiting for, flush queue
     flushPending(ifName, arp->getSenderIpAddr(), arp->getSenderMacAddress());
 }
 
-// --- CORE ROUTING LOGIC ---
 
 void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table)
 {
     auto* eth = packet.getLayerOfType<pcpp::EthLayer>();
     auto* ip  = packet.getLayerOfType<pcpp::IPv4Layer>();
     if (!eth || !ip) return;
-
-    // --- FIX: OCHRONA PRZED ROUTOWANIEM DO SAMEGO SIEBIE ---
-    // Sprawdzamy, czy IP docelowe to IP któregokolwiek z naszych interfejsów.
-    // Jeśli tak, przerywamy. Nie chcemy wysyłać pakietu "do siebie" w świat.
     const pcpp::IPv4Address dst = ip->getDstIPv4Address();
 
     for (const auto* dev : interfaces) {
         if (dev->getIPv4Address() == dst) {
-            // To jest pakiet do mnie (lokalny). Nie routuj go.
-            // System operacyjny (Linux) go odbierze, a my jako Router User-Space go ignorujemy.
             return;
         }
     }
@@ -197,11 +186,9 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     auto route = routing_table.findRoute(dst);
 
     if (!route.has_value()) {
-        // std::cerr << "[Routing] No route for " << dst.toString() << std::endl;
         return;
     }
 
-    // [DALSZA CZĘŚĆ FUNKCJI BEZ ZMIAN...]
 
     // 2. Determine Next Hop IP
     pcpp::IPv4Address nextHop = dst;
@@ -223,39 +210,16 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     if (iphdr->timeToLive <= 1) return;
     iphdr->timeToLive -= 1;
     ip->computeCalculateFields();
-
-    // 5. --- RESOLVE DESTINATION MAC (INTEGRATION FIX) ---
     eth->setSourceMac(outInterface->getMacAddress());
 
-    // A. Check ARP Cache first
     auto macOpt = lookupArp(outInterface->getName(), nextHop);
 
-    // B. If missing, check STATIC MAPPING (Opcjonalnie odkomentuj, jeśli dynamiczny ARP zawodzi)
-    /*
-    if (!macOpt) {
-        if (outInterface->getName() == "ens34" && nextHop == pcpp::IPv4Address("192.168.1.2")) {
-            macOpt = pcpp::MacAddress("00:86:9c:27:67:11");
-            learnArp("ens34", nextHop, *macOpt);
-        }
-        else if (nextHop == pcpp::IPv4Address("10.1.0.2")) {
-            macOpt = pcpp::MacAddress("00:0c:29:7e:17:2a");
-            learnArp("ens37", nextHop, *macOpt);
-        }
-        else if (nextHop == pcpp::IPv4Address("10.2.0.2")) {
-            macOpt = pcpp::MacAddress("00:0c:29:f4:16:2d");
-            learnArp("ens38", nextHop, *macOpt);
-        }
-    }
-    */
-
-    // 6. Send or Queue
     if (macOpt) {
         eth->setDestMac(*macOpt);
         if (!outInterface->sendPacket(&packet)) {
             std::cerr << "[Routing] Failed to send packet on " << outInterface->getName() << std::endl;
         }
     } else {
-        // Queue it and send ARP Request instead.
         enqueuePending(outInterface->getName(), nextHop, packet);
         sendArpRequest(outInterface, nextHop);
     }

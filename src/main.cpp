@@ -43,8 +43,6 @@ static NatService natService;
 static DecryptionSessionTable decryptionSessionTable;
 static std::unique_ptr<TlsMitmProxy> tlsMitmProxy;
 
-const IPv4Address EXTERNAL_IP("192.168.1.39");
-
 bool runCommand(const std::string& command)
 {
 
@@ -200,7 +198,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     NatState& state = NatPolicy::nat_state;
 
     // 1. Inbound (Return Traffic)
-    if (ipLayer->getDstIPv4Address() == EXTERNAL_IP) {
+    if (ipLayer->getDstIPv4Address() == configuration.public_ip_addr) {
         if (debug) std::cout << "[DEBUG] Direction: INBOUND (Target is External IP)" << std::endl;
         if (Session* sessionPtr = state.table.findSession(key)) {
             NatSession* session = static_cast<NatSession*>(sessionPtr);
@@ -226,7 +224,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
         if (matchesPolicy) {
             if (debug) std::cout << "[DEBUG] Policy MATCHED. Getting Session..." << std::endl;
-            NatSession* session = state.getOrCreateSession(key, EXTERNAL_IP);
+            NatSession* session = state.getOrCreateSession(key, configuration.public_ip_addr);
             if (session) {
                 natService.applyNat(*session, ipLayer);
                 if (debug) std::cout << "[DEBUG] Applied Source NAT. New Src: " << ipLayer->getSrcIPv4Address().toString() << std::endl;
@@ -241,7 +239,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
 int main()
 {
-    std::cout << "router start (DEEP COPY FIX)\n";
+    std::cout << "router start\n";
 
     // --- SYSTEM CONFIGURATION ---
     std::cout << "[SYSTEM] Disabling Kernel Routing..." << std::endl;

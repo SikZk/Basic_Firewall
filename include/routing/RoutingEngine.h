@@ -8,11 +8,7 @@
 #include <chrono>
 
 #include "pcapplusplus/PcapLiveDevice.h"
-#include "pcapplusplus/Packet.h"
-#include "pcapplusplus/IPv4Layer.h"
-
-// Adjust these includes to your project layout:
-#include "../routing/RoutingTable.h"   // must define RoutingTable and RouteEntry
+#include "../routing/RoutingTable.h"
 
 class RoutingEngine
 {

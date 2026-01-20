@@ -129,8 +129,3 @@ EVP_PKEY* DecryptionProfile::getCaPrivateKey() const
 {
     return ca_private_key;
 }
-
-uint8_t* DecryptionProfile::decrypt()
-{
-    return nullptr;
-}

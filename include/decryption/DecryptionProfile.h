@@ -32,7 +32,6 @@ class DecryptionProfile {
         bool matchesEndpoints(const pcpp::IPv4Address& source, const pcpp::IPv4Address& destination) const;
         X509* getCaCert() const;
         EVP_PKEY* getCaPrivateKey() const;
-        uint8_t* decrypt();
     private:
         pcpp::IPv4Address network_from;
         uint32_t network_from_mask;
