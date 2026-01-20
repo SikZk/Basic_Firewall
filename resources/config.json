@@ -82,8 +82,8 @@
         },
         "antimalware": {
           "blocked_hashes": [
-            "d41d8cd98f00b204e9800998ecf8427e",
-            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            "44d88612fea8a8f36de82e1278abb02f",
+            "d8e8fca2dc0f896fd7cb4cb0031ba249"
           ]
         }
       }
