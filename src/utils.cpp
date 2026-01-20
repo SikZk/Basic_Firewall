@@ -12,6 +12,7 @@
 #include "iostream"
 
 #include <arpa/inet.h>
+#include <pcapplusplus/Packet.h>
 
 using namespace pcpp;
 
