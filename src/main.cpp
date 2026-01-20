@@ -199,24 +199,30 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
     if (tcpLayer && isHttpsPacket(tcpLayer) && shouldDecryptTraffic(*ipLayer)) {
         const auto* tcpHeader = tcpLayer->getTcpHeader();
         SessionFlowKey decryptKey = getKeyFromPacket(packet);
-        auto* existing = decryptionSessionTable.findSession(decryptKey);
-        if (!existing) {
-            DecryptionSession newSession(
-                inDev->getIPv4Address(),
-                ipLayer->getSrcIPv4Address(),
-                ntohs(tcpHeader->portSrc),
-                ipLayer->getDstIPv4Address(),
-                ntohs(tcpHeader->portDst)
-            );
-            existing = &decryptionSessionTable.createSession(decryptKey, std::move(newSession));
-        }
+        if (configuration.tls_mitm_enabled) {
+            if (auto* existing = decryptionSessionTable.findSession(decryptKey)) {
+                decryptSession = static_cast<DecryptionSession*>(existing);
+            }
+        } else {
+            auto* existing = decryptionSessionTable.findSession(decryptKey);
+            if (!existing) {
+                DecryptionSession newSession(
+                    inDev->getIPv4Address(),
+                    ipLayer->getSrcIPv4Address(),
+                    ntohs(tcpHeader->portSrc),
+                    ipLayer->getDstIPv4Address(),
+                    ntohs(tcpHeader->portDst)
+                );
+                existing = &decryptionSessionTable.createSession(decryptKey, std::move(newSession));
+            }
 
-        decryptSession = static_cast<DecryptionSession*>(existing);
-        const uint8_t* payload = tcpLayer->getLayerPayload();
-        size_t payloadLen = tcpLayer->getLayerPayloadSize();
-        if (payloadLen > 0) {
-            decryptSession->processEncryptedData(payload, payloadLen);
-            logDecryptedHttpIfReady(*decryptSession);
+            decryptSession = static_cast<DecryptionSession*>(existing);
+            const uint8_t* payload = tcpLayer->getLayerPayload();
+            size_t payloadLen = tcpLayer->getLayerPayloadSize();
+            if (payloadLen > 0) {
+                decryptSession->processEncryptedData(payload, payloadLen);
+                logDecryptedHttpIfReady(*decryptSession);
+            }
         }
     }
 
@@ -325,6 +331,37 @@ int main()
     configuration.load();
     if (configuration.tls_mitm_enabled) {
         tlsMitmProxy = std::make_unique<TlsMitmProxy>(configuration);
+        tlsMitmProxy->setDecryptedDataCallback(
+            [](const pcpp::IPv4Address& src_ip,
+               uint16_t src_port,
+               const pcpp::IPv4Address& dst_ip,
+               uint16_t dst_port,
+               const std::string& data,
+               bool from_client) {
+                if (from_client) {
+                    return;
+                }
+                SessionFlowKey key{
+                    src_ip,
+                    src_port,
+                    dst_ip,
+                    dst_port,
+                    pcpp::TCP
+                };
+                auto* existing = decryptionSessionTable.findSession(key);
+                if (!existing) {
+                    DecryptionSession newSession(
+                        src_ip,
+                        src_ip,
+                        src_port,
+                        dst_ip,
+                        dst_port
+                    );
+                    existing = &decryptionSessionTable.createSession(key, std::move(newSession));
+                }
+                auto* session = static_cast<DecryptionSession*>(existing);
+                session->processDecryptedData(reinterpret_cast<const uint8_t*>(data.data()), data.size());
+            });
         tlsMitmProxy->start();
         configureTlsMitmRedirect(configuration.tls_mitm_port, true);
     }

@@ -128,6 +128,11 @@ TlsMitmProxy::~TlsMitmProxy()
     stop();
 }
 
+void TlsMitmProxy::setDecryptedDataCallback(DecryptedDataCallback callback)
+{
+    decrypted_data_callback = std::move(callback);
+}
+
 bool TlsMitmProxy::start()
 {
     if (running.load()) return true;
@@ -280,6 +285,7 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
     }
 
     pcpp::IPv4Address src_ip(inet_ntoa(client_addr.sin_addr));
+    uint16_t src_port = ntohs(client_addr.sin_port);
     pcpp::IPv4Address dst_ip(inet_ntoa(dst_addr.sin_addr));
     uint16_t dst_port = ntohs(dst_addr.sin_port);
 
@@ -375,6 +381,10 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
             if (n <= 0) {
                 active = false;
             } else {
+                if (decrypted_data_callback) {
+                    decrypted_data_callback(src_ip, src_port, dst_ip, dst_port,
+                                            std::string(buffer.data(), buffer.data() + n), true);
+                }
                 std::cout << "[TLS MITM] Client -> Server (" << servername << ") [" << n
                           << " bytes]: " << std::string(buffer.data(), buffer.data() + n) << std::endl;
                 if (SSL_write(server_ssl, buffer.data(), n) <= 0) {
@@ -388,6 +398,10 @@ void TlsMitmProxy::handleClient(int client_fd, sockaddr_in client_addr)
             if (n <= 0) {
                 active = false;
             } else {
+                if (decrypted_data_callback) {
+                    decrypted_data_callback(dst_ip, dst_port, src_ip, src_port,
+                                            std::string(buffer.data(), buffer.data() + n), false);
+                }
                 std::cout << "[TLS MITM] Server -> Client (" << servername << ") [" << n
                           << " bytes]: " << std::string(buffer.data(), buffer.data() + n) << std::endl;
                 if (SSL_write(client_ssl, buffer.data(), n) <= 0) {
