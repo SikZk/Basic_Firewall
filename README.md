@@ -24,7 +24,21 @@ This repository includes a single Docker Compose setup that builds a 3-host lab 
 docker compose up --build
 ```
 
-> If your LAN interface or IPs differ, update `docker-compose.yml` (the `lan` network `parent`, subnet, gateway, and the firewall's `ipv4_address`).
+> If your LAN interface or IPs differ, update `docker-compose.yml` (the `lan` network `parent`, subnet, gateway, and the firewall's `ipv4_address`) or provide overrides via environment variables.
+
+### Overrides (to avoid IP conflicts)
+
+If you see `failed to set up container networking: Address already in use`, the LAN IP you chose is already active on your network. You can override the LAN settings without editing the compose file:
+
+```bash
+export LAN_PARENT=wlp131s0
+export LAN_SUBNET=192.168.1.0/24
+export LAN_GW=192.168.1.2
+export FIREWALL_LAN_IP=192.168.1.70
+docker compose up --build
+```
+
+If you change `FIREWALL_LAN_IP`, update `resources/config.json` (`public_ip`) to match, because the firewall uses it at runtime.
 
 ## Host ↔ Firewall macvlan access (if needed)
 

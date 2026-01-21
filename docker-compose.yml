@@ -35,7 +35,7 @@ services:
       - NET_RAW
     environment:
       LAN_IF: eth2
-      LAN_GW: 192.168.1.2
+      LAN_GW: ${LAN_GW:-192.168.1.2}
       NET1_IF: eth0
       NET2_IF: eth1
     networks:
@@ -44,7 +44,7 @@ services:
       net10_2:
         ipv4_address: 10.2.0.1
       lan:
-        ipv4_address: 192.168.1.70
+        ipv4_address: ${FIREWALL_LAN_IP:-192.168.1.70}
     volumes:
       - ./resources:/opt/basic_firewall/resources:ro
 
@@ -62,8 +62,8 @@ networks:
   lan:
     driver: macvlan
     driver_opts:
-      parent: wlp131s0
+      parent: ${LAN_PARENT:-wlp131s0}
     ipam:
       config:
-        - subnet: 192.168.1.0/24
-          gateway: 192.168.1.2
+        - subnet: ${LAN_SUBNET:-192.168.1.0/24}
+          gateway: ${LAN_GW:-192.168.1.2}
