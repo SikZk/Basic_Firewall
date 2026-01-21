@@ -1,5 +1,5 @@
 {
-  "public_ip": "192.168.1.80",
+  "public_ip": "172.22.1.80",
   "interfaces": {
     "port1": "eth0",
     "port2": "eth1",
@@ -7,19 +7,19 @@
   },
   "routes": [
     {
-      "network": "10.1.0.0",
+      "network": "172.20.0.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
       "interface": "eth0"
     },
     {
-      "network": "10.2.0.0",
+      "network": "172.21.0.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
       "interface": "eth1"
     },
     {
-      "network": "192.168.1.0",
+      "network": "172.22.1.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
       "interface": "eth2"
@@ -27,7 +27,7 @@
     {
       "network": "0.0.0.0",
       "mask": "0.0.0.0",
-      "gateway": "192.168.1.2",
+      "gateway": "172.22.1.2",
       "interface": "eth2"
     }
   ],
@@ -46,7 +46,7 @@
       "name": "decrypt-https-internal",
       "ca_certificate_path": "/opt/basic_firewall/resources/certs/ca.crt",
       "ca_private_key_path": "/opt/basic_firewall/resources/certs/ca.key",
-      "src_network": "10.2.0.0",
+      "src_network": "172.21.0.0",
       "src_mask": 24,
       "dest_network": "0.0.0.0",
       "dest_mask": 0
@@ -58,36 +58,36 @@
   },
   "security_policies": [
     {
-      "src_network": "10.1.0.0",
+      "src_network": "172.20.0.0",
       "src_mask": 24,
-      "dest_network": "10.2.0.0",
+      "dest_network": "172.21.0.0",
       "dest_mask": 24,
       "src_port": 0,
       "dest_port": 0,
       "action": "deny"
     },
     {
-      "src_network": "10.2.0.0",
+      "src_network": "172.21.0.0",
       "src_mask": 24,
-      "dest_network": "10.1.0.0",
+      "dest_network": "172.20.0.0",
       "dest_mask": 24,
       "src_port": 0,
       "dest_port": 0,
       "action": "deny"
     },
     {
-      "src_network": "10.1.0.0",
+      "src_network": "172.20.0.0",
       "src_mask": 24,
-      "dest_network": "192.168.1.0",
+      "dest_network": "172.22.1.0",
       "dest_mask": 24,
       "src_port": 0,
       "dest_port": 0,
       "action": "deny"
     },
     {
-      "src_network": "10.2.0.0",
+      "src_network": "172.21.0.0",
       "src_mask": 24,
-      "dest_network": "192.168.1.0",
+      "dest_network": "172.22.1.0",
       "dest_mask": 24,
       "src_port": 0,
       "dest_port": 0,

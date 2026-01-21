@@ -7,10 +7,10 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      DEFAULT_GW: 10.1.0.1
+      DEFAULT_GW: 172.20.0.1
     networks:
       net10_1:
-        ipv4_address: 10.1.0.2
+        ipv4_address: 172.20.0.2
 
   host2:
     build:
@@ -20,10 +20,10 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      DEFAULT_GW: 10.2.0.1
+      DEFAULT_GW: 172.21.0.1
     networks:
       net10_2:
-        ipv4_address: 10.2.0.2
+        ipv4_address: 172.21.0.2
 
   firewall:
     build:
@@ -35,16 +35,16 @@ services:
       - NET_RAW
     environment:
       LAN_IF: eth2
-      LAN_GW: 192.168.1.2
+      LAN_GW: 172.22.1.2
       NET1_IF: eth0
       NET2_IF: eth1
     networks:
       net10_1:
-        ipv4_address: 10.1.0.1
+        ipv4_address: 172.20.0.1
       net10_2:
-        ipv4_address: 10.2.0.1
+        ipv4_address: 172.21.0.1
       lan:
-        ipv4_address: 192.168.1.80
+        ipv4_address: 172.22.1.80
     volumes:
       - ./resources:/opt/basic_firewall/resources:ro
 
@@ -53,17 +53,17 @@ networks:
     internal: true
     ipam:
       config:
-        - subnet: 10.1.0.0/24
+        - subnet: 172.20.0.0/24
   net10_2:
     internal: true
     ipam:
       config:
-        - subnet: 10.2.0.0/24
+        - subnet: 172.21.0.0/24
   lan:
     driver: macvlan
     driver_opts:
       parent: ${LAN_PARENT:-wlp131s0}
     ipam:
       config:
-        - subnet: 192.168.1.0/24
-          gateway: 192.168.1.2
+        - subnet: 172.22.1.0/24
+          gateway: 172.22.1.2

@@ -29,7 +29,7 @@ NatSession::NatSession(
 
     // destination_to_source:
     // internal_ip/port = Remote Server (1.1.1.1)
-    // external_ip/port = Client (10.x.x.x) <--- TO ZMIENIAMY na NAT IP (192.168.1.29)
+    // external_ip/port = Client (10.x.x.x) <--- TO ZMIENIAMY na NAT IP (172.22.1.29)
 
     this->destination_to_source.external_ip = nat_ip;
     this->destination_to_source.external_port = nat_port;
