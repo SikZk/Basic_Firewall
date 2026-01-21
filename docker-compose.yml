@@ -60,7 +60,7 @@ networks:
   outside_net:
     driver: macvlan
     driver_opts:
-      parent: ${PARENT_IFACE:?Set PARENT_IFACE to your host LAN interface (example: enp3s0)}
+      parent: ${PARENT_IFACE}
     ipam:
       config:
         - subnet: 192.168.1.0/24
