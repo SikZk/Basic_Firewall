@@ -1,10 +1,7 @@
-version: "3.9"
-
 services:
   host1:
     build:
-      context: .
-      dockerfile: docker/client/Dockerfile
+      context: docker/client
     cap_add:
       - NET_ADMIN
     environment:
@@ -15,8 +12,7 @@ services:
 
   host2:
     build:
-      context: .
-      dockerfile: docker/client/Dockerfile
+      context: docker/client
     cap_add:
       - NET_ADMIN
     environment:
@@ -27,8 +23,7 @@ services:
 
   firewall:
     build:
-      context: .
-      dockerfile: docker/firewall/Dockerfile
+      context: docker/firewall
     cap_add:
       - NET_ADMIN
     environment:
@@ -65,7 +60,7 @@ networks:
   outside_net:
     driver: macvlan
     driver_opts:
-      parent: ${PARENT_IFACE}
+      parent: ${PARENT_IFACE:?Set PARENT_IFACE to your host LAN interface (example: enp3s0)}
     ipam:
       config:
         - subnet: 192.168.1.0/24
