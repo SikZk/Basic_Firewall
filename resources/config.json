@@ -35,8 +35,8 @@
     {
       "src_network": "172.29.0.0",
       "src_mask": 16,
-      "dest_network": "0.0.0.0",
-      "dest_mask": 0,
+      "dest_network": "172.29.200.0",
+      "dest_mask": 24,
       "src_port": 0,
       "dest_port": 0
     }
