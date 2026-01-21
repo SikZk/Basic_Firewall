@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.host
+      args:
+        SERVICE_NAME: host1
     container_name: host1
     cap_add:
       - NET_ADMIN
@@ -16,6 +18,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.host
+      args:
+        SERVICE_NAME: host2
     container_name: host2
     cap_add:
       - NET_ADMIN

@@ -44,8 +44,8 @@
   "decryption_profiles": [
     {
       "name": "decrypt-https-internal",
-      "ca_certificate_path": "/tmp/Basic_Firewall/resources/certs/ca.crt",
-      "ca_private_key_path": "/tmp/Basic_Firewall/resources/certs/ca.key",
+      "ca_certificate_path": "/opt/basic_firewall/resources/certs/ca.crt",
+      "ca_private_key_path": "/opt/basic_firewall/resources/certs/ca.key",
       "src_network": "172.29.102.0",
       "src_mask": 24,
       "dest_network": "0.0.0.0",
