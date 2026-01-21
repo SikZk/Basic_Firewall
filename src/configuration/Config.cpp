@@ -266,8 +266,8 @@ void Config::parseInterfaces(const boost::json::value& object)
         interface_names.emplace_back(item.value().as_string());
     }
     bool hasEns34 = false;
-    for(const auto& s : interface_names) if(s == "eth2") hasEns34 = true;
-    if(!hasEns34) interface_names.push_back("eth2");
+    for(const auto& s : interface_names) if(s == "ens34") hasEns34 = true;
+    if(!hasEns34) interface_names.push_back("ens34");
 };
 
 void Config::loadMalwareDatabase(const boost::json::value& object) { (void)object; };

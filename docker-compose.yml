@@ -40,7 +40,7 @@ services:
     sysctls:
       net.ipv4.ip_forward: "1"
     environment:
-      LAN_IF: eth2
+      LAN_IF:
       LAN_GW: 172.29.200.1
       NET1_IF: eth0
       NET2_IF: eth1

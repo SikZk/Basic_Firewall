@@ -4,7 +4,7 @@ set -euo pipefail
 DEFAULT_GW="${DEFAULT_GW:-}"
 DEFAULT_DNS="${DEFAULT_DNS:-1.1.1.1}"
 if [[ -n "${DEFAULT_GW}" ]]; then
-  ip route del default || true
+  ip route del default >/dev/null 2>&1 || true
   ip route add default via "${DEFAULT_GW}" dev eth0
 fi
 case "${SERVICE_NAME:-}" in
