@@ -1,0 +1,69 @@
+services:
+  host1:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+    container_name: host1
+    cap_add:
+      - NET_ADMIN
+    environment:
+      DEFAULT_GW: 10.1.0.1
+    networks:
+      net10_1:
+        ipv4_address: 10.1.0.2
+
+  host2:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+    container_name: host2
+    cap_add:
+      - NET_ADMIN
+    environment:
+      DEFAULT_GW: 10.2.0.1
+    networks:
+      net10_2:
+        ipv4_address: 10.2.0.2
+
+  firewall:
+    build:
+      context: .
+      dockerfile: Dockerfile.firewall
+    container_name: firewall
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      LAN_IF: eth2
+      LAN_GW: 192.168.1.2
+      NET1_IF: eth0
+      NET2_IF: eth1
+    networks:
+      net10_1:
+        ipv4_address: 10.1.0.1
+      net10_2:
+        ipv4_address: 10.2.0.1
+      lan:
+        ipv4_address: 192.168.1.70
+    volumes:
+      - ./resources:/opt/basic_firewall/resources:ro
+
+networks:
+  net10_1:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.1.0.0/24
+  net10_2:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.2.0.0/24
+  lan:
+    driver: macvlan
+    driver_opts:
+      parent: wlp131s0
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.2
