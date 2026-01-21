@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  host1:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+    cap_add:
+      - NET_ADMIN
+    environment:
+      FIREWALL_GW: 10.1.0.1
+    networks:
+      net1:
+        ipv4_address: 10.1.0.2
+
+  host2:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+    cap_add:
+      - NET_ADMIN
+    environment:
+      FIREWALL_GW: 10.2.0.1
+    networks:
+      net2:
+        ipv4_address: 10.2.0.2
+
+  firewall:
+    build:
+      context: .
+      dockerfile: docker/firewall/Dockerfile
+    cap_add:
+      - NET_ADMIN
+    environment:
+      EXTERNAL_GW: 192.168.1.2
+    sysctls:
+      net.ipv4.ip_forward: "1"
+      net.ipv4.conf.all.rp_filter: "0"
+    volumes:
+      - ./resources/config.json:/tmp/Basic_Firewall/resources/config.json:ro
+      - ./resources/certs:/tmp/Basic_Firewall/resources/certs:ro
+    networks:
+      outside_net:
+        ipv4_address: 192.168.1.70
+      net1:
+        ipv4_address: 10.1.0.1
+      net2:
+        ipv4_address: 10.2.0.1
+
+networks:
+  net1:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.1.0.0/24
+          gateway: 10.1.0.254
+  net2:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.2.0.0/24
+          gateway: 10.2.0.254
+  outside_net:
+    driver: macvlan
+    driver_opts:
+      parent: ${PARENT_IFACE}
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.2
