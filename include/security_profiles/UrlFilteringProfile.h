@@ -8,6 +8,7 @@
 class UrlFilteringProfile : public SecurityProfile {
 private:
     std::unordered_set<std::string> blocked_domains;
+    friend class SecurityProfilesTest;
     bool shouldBlockHost(const std::string& host) const;
     static std::string normalizeHost(std::string host);
     static std::string extractHostFromHttp(const std::string& payload);

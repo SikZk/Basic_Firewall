@@ -51,3 +51,28 @@ target_link_directories(Basic_Firewall PRIVATE
 target_link_libraries(Basic_Firewall PRIVATE
         Pcap++ Packet++ Common++ pcap pthread ssl crypto
 )
+
+enable_testing()
+
+add_executable(Basic_Firewall_Tests
+        tests/security_profiles_tests.cpp
+        src/security_profiles/SecurityProfile.cpp
+        src/security_profiles/UrlFilteringProfile.cpp
+        src/security_profiles/AntimalwareProfile.cpp
+        src/session/sessions/Session.cpp
+        src/session/sessions/DecryptionSession.cpp
+)
+target_include_directories(Basic_Firewall_Tests PRIVATE
+        include
+        ${PCAPPLUSPLUS_ROOT}/include
+)
+target_link_directories(Basic_Firewall_Tests PRIVATE
+        ${PCAPPLUSPLUS_ROOT}/lib
+)
+target_link_libraries(Basic_Firewall_Tests PRIVATE
+        OpenSSL::Crypto
+        OpenSSL::SSL
+        Pcap++ Packet++ Common++ pcap pthread ssl crypto
+)
+
+add_test(NAME Basic_Firewall_Tests COMMAND Basic_Firewall_Tests)
