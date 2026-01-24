@@ -260,14 +260,14 @@ void Config::parseInterfaces(const boost::json::value& object)
     for (const auto& item : object.as_object()) {
         interface_names.emplace_back(item.value().as_string());
     }
-    bool hasEth0 = false;
+    bool hasEth2 = false;
     for (const auto& s : interface_names) {
-        if (s == "eth0") {
-            hasEth0 = true;
+        if (s == "eth2") {
+            hasEth2 = true;
         }
     }
-    if (!hasEth0) {
-        interface_names.push_back("eth0");
+    if (!hasEth2) {
+        interface_names.push_back("eth2");
     }
 }
 

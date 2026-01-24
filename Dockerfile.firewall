@@ -39,6 +39,10 @@ RUN apt-get update \
     build-essential python3 libbz2-dev zlib1g-dev libicu-dev \
  && rm -rf /var/lib/apt/lists/*
 
+RUN rm -rf build \
+ && cmake -S . -B build \
+ && cmake --build build -j"$(nproc)"
+
 RUN mkdir -p build \
     && cd build \
     && cmake .. \

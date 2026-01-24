@@ -229,8 +229,8 @@ int main()
     std::cout << "[SYSTEM] Disabling Kernel Routing..." << std::endl;
     runCommand("sudo sysctl -w net.ipv4.ip_forward=0");
 
-    std::cout << "[SYSTEM] Adding iptables rule to drop kernel handling of ports 10000-20000 on eth0..." << std::endl;
-    runCommand("sudo iptables -A INPUT -i eth0 -p tcp --dport 10000:20000 -j DROP");
+    std::cout << "[SYSTEM] Adding iptables rule to drop kernel handling of ports 10000-20000 on eth2..." << std::endl;
+    runCommand("sudo iptables -A INPUT -i eth2 -p tcp --dport 10000:20000 -j DROP");
 
     std::signal(SIGINT, exitProgram);
     std::signal(SIGTERM, exitProgram);
@@ -280,10 +280,10 @@ int main()
 
     bool externalFound = false;
     for (auto* iface : interfaces) {
-        if(iface->getName() == "eth0") externalFound = true;
+        if(iface->getName() == "eth2") externalFound = true;
     }
     if(!externalFound) {
-        if(auto* dev = PcapLiveDeviceList::getInstance().getDeviceByName("eth0"))
+        if(auto* dev = PcapLiveDeviceList::getInstance().getDeviceByName("eth2"))
             interfaces.push_back(dev);
     }
 

@@ -4,7 +4,7 @@ sudo apt install -y dbus-x11
 
 
 echo "Building and starting containers in detached mode..."
-docker compose up -d --build
+sudo docker compose up -d --build
 
 echo "Waiting for containers to be ready..."
 sleep 5
