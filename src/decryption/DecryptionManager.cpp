@@ -1,5 +1,3 @@
-// src/decryption/DecryptionManager.cpp
-
 #include "../../include/decryption/DecryptionManager.h"
 #include <iostream>
 

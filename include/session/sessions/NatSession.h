@@ -1,14 +1,9 @@
-//
-// Created by mikolaj on 11/26/25.
-//
-
 #ifndef BASIC_FIREWALL_NATSESSION_H
 #define BASIC_FIREWALL_NATSESSION_H
 #include <cstdint>
 #include <pcapplusplus/IpAddress.h>
 
 #include "Session.h"
-
 
 class NatSession : public Session {
 public:
@@ -25,4 +20,4 @@ public:
     ~NatSession() = default;
 };
 
-#endif //BASIC_FIREWALL_NATSESSION_H
+#endif

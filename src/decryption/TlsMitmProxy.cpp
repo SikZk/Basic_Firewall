@@ -113,7 +113,7 @@ void tunnelBytes(int client_fd, int server_fd)
     }
 }
 
-} // namespace
+}
 
 TlsMitmProxy::TlsMitmProxy(Config& config)
     : config(config)

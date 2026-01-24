@@ -18,7 +18,6 @@ public:
     void loadInterfaces(std::vector<pcpp::PcapLiveDevice*> interfaces);
     void loadRoutingTable(const RoutingTable& table);
 
-    // Called from capture callback:
     void processArpPacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface);
     void routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inInterface, RoutingTable& routing_table);
 

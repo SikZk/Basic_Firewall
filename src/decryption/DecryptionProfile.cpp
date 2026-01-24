@@ -43,7 +43,7 @@ bool matchesNetwork(const pcpp::IPv4Address& address, const pcpp::IPv4Address& n
     return true;
 }
 
-} // namespace
+}
 
 DecryptionProfile::DecryptionProfile(std::string name,
                                      std::string ca_cert,

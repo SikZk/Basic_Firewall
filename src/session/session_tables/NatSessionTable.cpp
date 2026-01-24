@@ -1,8 +1,6 @@
 #include "../../../include/session/session_tables/NatSessionTable.h"
-#include <boost/unordered/unordered_map.hpp>
 #include <iostream>
-
-// --- NatSessionTable Implementation ---
+#include <boost/unordered/unordered_map.hpp>
 
 NatSessionTable::SessionMap NatSessionTable::nat_sessions;
 
@@ -32,8 +30,6 @@ bool NatSessionTable::doesSessionExist(const SessionFlowKey& key) const
 }
 
 
-// --- PortPool Implementation ---
-
 std::optional<uint16_t> PortPool::acquire_free_port_number()
 {
     if (used_.empty()) {
@@ -59,56 +55,43 @@ void PortPool::release_port(uint16_t port)
     used_[port - start_] = false;
 }
 
-
-// --- NatState Implementation ---
-
 NatSession* NatState::getOrCreateSession(const SessionFlowKey& key, pcpp::IPv4Address external_ip)
 {
-    // 1. Check if session exists (Outbound)
     if (Session* existing = table.findSession(key)) {
         return static_cast<NatSession*>(existing);
     }
 
-    // 2. Acquire a new port
     auto portOpt = ports.acquire_free_port_number();
     if (!portOpt.has_value()) {
         std::cerr << "[NAT] Error: No free ports available!" << std::endl;
         return nullptr;
     }
-    uint16_t allocatedPort = portOpt.value();
+    const uint16_t allocatedPort = portOpt.value();
 
-    // 3. Create Session Object
     NatSession session(
-        external_ip,        // firewall_interface_ip
-        key.src_ip,         // source_ip (Internal Client)
-        key.src_port,       // source_port
-        key.dst_ip,         // destination_ip (External Server)
-        key.dst_port,       // destination_port
-        external_ip,        // nat_ip
-        allocatedPort,      // nat_port
-        true                // is_source_nat
+        external_ip,
+        key.src_ip,
+        key.src_port,
+        key.dst_ip,
+        key.dst_port,
+        external_ip,
+        allocatedPort,
+        true
     );
 
-    // 4. Insert OUTBOUND key
     Session& storedRef = table.createSession(key, session);
 
-    // 5. Insert INBOUND key (Return Traffic)
     SessionFlowKey returnKey;
-    returnKey.src_ip = key.dst_ip;          // Server IP
-    returnKey.dst_ip = external_ip;         // Firewall IP
-    returnKey.dst_port = allocatedPort;     // Firewall Port/ID
+    returnKey.src_ip = key.dst_ip;
+    returnKey.dst_ip = external_ip;
+    returnKey.dst_port = allocatedPort;
     returnKey.protocol = key.protocol;
 
-    // --- FIX FOR ICMP ---
     if (key.protocol == pcpp::ICMP) {
-        // Dla ICMP, serwer odsyła ID, które otrzymał (czyli nasz allocatedPort).
-        // Więc "Port Źródłowy" w pakiecie powrotnym to też allocatedPort.
         returnKey.src_port = allocatedPort;
     } else {
-        // Dla TCP/UDP, port serwera się nie zmienia (np. 80, 443).
         returnKey.src_port = key.dst_port;
     }
-    // --------------------
 
     table.createSession(returnKey, session);
 
