@@ -74,7 +74,6 @@ void Config::parseDecryptionProfile(const boost::json::value& object)
     }
 }
 
-// --- Parsowanie Security Policy z JSON ---
 void Config::parseSecurityPolicy(const boost::json::value& object)
 {
     if (!object.is_array()) return;
@@ -178,7 +177,6 @@ void Config::parseSecurityPolicy(const boost::json::value& object)
     );
 }
 
-// --- Parsowanie NAT Policy z JSON ---
 void Config::parseNatPolicy(const boost::json::value& object) {
     if (!object.is_array()) return;
 
@@ -197,7 +195,7 @@ void Config::parseNatPolicy(const boost::json::value& object) {
             src_net, src_mask, dst_net, dst_mask, src_port, dst_port
         );
     }
-};
+}
 
 void Config::parseRoutingTable(const boost::json::value& object)
 {
@@ -247,16 +245,13 @@ void Config::loadFromFile(const std::string& filepath)
         if (obj.contains("security_policies")) parseSecurityPolicy(obj.at("security_policies"));
         if (obj.contains("decryption_profiles")) parseDecryptionProfile(obj.at("decryption_profiles"));
         if (obj.contains("tls_mitm")) parseTlsMitm(obj.at("tls_mitm"));
-        
+
         if (obj.contains("public_ip")) {
             std::string ip_str = std::string(obj.at("public_ip").as_string());
             public_ip_addr = pcpp::IPv4Address(ip_str);
         }
-
-
-
     } catch (...) {}
-};
+}
 
 void Config::parseInterfaces(const boost::json::value& object)
 {
@@ -266,8 +261,14 @@ void Config::parseInterfaces(const boost::json::value& object)
         interface_names.emplace_back(item.value().as_string());
     }
     bool hasEth0 = false;
-    for(const auto& s : interface_names) if(s == "eth0") hasEth0 = true;
-    if(!hasEth0) interface_names.push_back("eth0");
-};
+    for (const auto& s : interface_names) {
+        if (s == "eth0") {
+            hasEth0 = true;
+        }
+    }
+    if (!hasEth0) {
+        interface_names.push_back("eth0");
+    }
+}
 
-void Config::loadMalwareDatabase(const boost::json::value& object) { (void)object; };
+void Config::loadMalwareDatabase(const boost::json::value& object) { (void)object; }

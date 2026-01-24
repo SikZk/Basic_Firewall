@@ -1,7 +1,3 @@
-//
-// Created by mikolaj on 11/5/25.
-//
-
 #ifndef BASIC_FIREWALL_SESSION_H
 #define BASIC_FIREWALL_SESSION_H
 #include <boost/container_hash/hash.hpp>
@@ -16,9 +12,6 @@ enum SessionState {
     CLOSED
 };
 
-
-// Tutaj mamy klucz do naszej mapy z sesjami, nasza sesja jest właściwie dwoma Flowami 1) client1->firewall 2) firewall->client2,
-// jednak klucz jest tylko jeden i identyfikuje oba Flowy, bo klucz pomija firewalla
 struct SessionFlowKey {
     pcpp::IPv4Address src_ip;
     uint16_t          src_port;
@@ -57,37 +50,35 @@ struct SessionFlow {
 };
 
 class Session {
-    protected:
-        SessionFlow source_to_destination;
-        SessionFlow destination_to_source;
-        SessionState session_state;
-        uint8_t* data;
-        size_t   data_length = 0;
-        size_t   data_capacity = 0;
-    public:
-        Session(
-            pcpp::IPv4Address firewall_interface_src_ip,
-            pcpp::IPv4Address firewall_interface_dest_ip,
-            pcpp::IPv4Address source_ip,
-            uint16_t          source_port,
-            pcpp::IPv4Address destination_ip,
-            uint16_t          destination_port
-        );
-        ~Session() = default;
-        static SessionFlowKey generateSessionFlowKey(
-            pcpp::IPv4Address source_ip,
-            uint16_t          source_port,
-            pcpp::IPv4Address destination_ip,
-            uint16_t          destination_port
-        );
-        uint8_t* getData();
-        size_t getDataLength();
-        void appendData(const uint8_t* new_data, size_t length);
-        const SessionFlow& getSourceToDestinationFlow() const;
-        const SessionFlow& getDestinationToSourceFlow() const;
+protected:
+    SessionFlow source_to_destination;
+    SessionFlow destination_to_source;
+    SessionState session_state;
+    uint8_t* data;
+    size_t data_length = 0;
+    size_t data_capacity = 0;
 
+public:
+    Session(
+        pcpp::IPv4Address firewall_interface_src_ip,
+        pcpp::IPv4Address firewall_interface_dest_ip,
+        pcpp::IPv4Address source_ip,
+        uint16_t source_port,
+        pcpp::IPv4Address destination_ip,
+        uint16_t destination_port
+    );
+    ~Session() = default;
+    static SessionFlowKey generateSessionFlowKey(
+        pcpp::IPv4Address source_ip,
+        uint16_t source_port,
+        pcpp::IPv4Address destination_ip,
+        uint16_t destination_port
+    );
+    uint8_t* getData();
+    size_t getDataLength();
+    void appendData(const uint8_t* new_data, size_t length);
+    const SessionFlow& getSourceToDestinationFlow() const;
+    const SessionFlow& getDestinationToSourceFlow() const;
 };
 
-
-
-#endif //BASIC_FIREWALL_SESSION_H
+#endif

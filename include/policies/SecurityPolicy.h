@@ -17,16 +17,15 @@ public:
     Action action;
     std::vector<std::shared_ptr<SecurityProfile>> security_profiles;
 
-    // Use std::string instead of std::pmr::string
     SecurityPolicy(
-            std::string network_from_str,
-            uint32_t network_from_mask,
-            std::string network_to_str,
-            uint32_t network_to_mask,
-            uint16_t source_port,
-            uint16_t destination_port,
-            Action action,
-            std::vector<std::shared_ptr<SecurityProfile>> profiles
+        std::string network_from_str,
+        uint32_t network_from_mask,
+        std::string network_to_str,
+        uint32_t network_to_mask,
+        uint16_t source_port,
+        uint16_t destination_port,
+        Action action,
+        std::vector<std::shared_ptr<SecurityProfile>> profiles
     ) : Policy(network_from_str, network_from_mask, network_to_str, network_to_mask, source_port, destination_port),
         action(action),
         security_profiles(std::move(profiles))

@@ -1,15 +1,13 @@
-#include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/IPv4Layer.h"
 #include "pcapplusplus/TcpLayer.h"
 #include "pcapplusplus/IcmpLayer.h"
 #include "pcapplusplus/EthLayer.h"
-#include "../include/configuration/Config.h"
 #include "../include/session/sessions/Session.h"
 #include "../include/session/sessions/DecryptionSession.h"
 #include "../include/session/sessions/NatSession.h"
 #include "../include/utils.h"
-#include "iostream"
+#include <iostream>
 
 #include <arpa/inet.h>
 #include <pcapplusplus/Packet.h>
@@ -100,9 +98,9 @@ bool isNotEncryptedSession(Session*)
 }
 
 SessionFlowKey getKeyFromPacket(Packet& packet) {
-    IPv4Layer* ip = packet.getLayerOfType<IPv4Layer>();
-    TcpLayer* tcp = packet.getLayerOfType<TcpLayer>();
-    IcmpLayer* icmp = packet.getLayerOfType<IcmpLayer>();
+    auto* ip = packet.getLayerOfType<IPv4Layer>();
+    auto* tcp = packet.getLayerOfType<TcpLayer>();
+    auto* icmp = packet.getLayerOfType<IcmpLayer>();
 
     SessionFlowKey key;
     if (!ip) return key;
@@ -146,7 +144,6 @@ bool isHttpsPacket(const TcpLayer* tcpLayer)
     return src_port == 443 || dst_port == 443;
 }
 
-// Helper to build and send a single RST packet
 void sendSingleRst(
     PcapLiveDevice* inDev, 
     RoutingEngine& routingEngine, 
@@ -157,7 +154,7 @@ void sendSingleRst(
     uint16_t srcPort, uint16_t dstPort,
     uint32_t seq, uint32_t ack,
     bool setAckFlag,
-    SessionFlowKey natKey // Key to check for existing NAT session
+    SessionFlowKey natKey
 )
 {
     EthLayer newEth(srcMac, dstMac, PCPP_ETHERTYPE_IP);
@@ -176,7 +173,6 @@ void sendSingleRst(
     rstPacket.addLayer(&newIp);
     rstPacket.addLayer(&newTcp);
 
-    // Apply NAT if session exists (e.g. modify SrcIP if this is Outbound acting as Client)
     if (auto* session = NatPolicy::nat_state.table.findSession(natKey)) {
         natService.applyNat(*static_cast<NatSession*>(session), rstPacket.getLayerOfType<IPv4Layer>());
     }
@@ -195,24 +191,20 @@ void sendTcpRst(
 {
     if (!blockedPacket.isPacketOfType(TCP)) return;
 
-    IPv4Layer* ip = blockedPacket.getLayerOfType<IPv4Layer>();
-    TcpLayer* tcp = blockedPacket.getLayerOfType<TcpLayer>();
-    EthLayer* eth = blockedPacket.getLayerOfType<EthLayer>();
+    auto* ip = blockedPacket.getLayerOfType<IPv4Layer>();
+    auto* tcp = blockedPacket.getLayerOfType<TcpLayer>();
+    auto* eth = blockedPacket.getLayerOfType<EthLayer>();
 
     if (!ip || !tcp || !eth) return;
 
-    uint32_t payloadLen = tcp->getLayerPayloadSize();
-    // Logical length of the TCP segment (Payload + SYN/FIN)
+    const uint32_t payloadLen = tcp->getLayerPayloadSize();
     uint32_t segLen = payloadLen;
     if (tcp->getTcpHeader()->synFlag || tcp->getTcpHeader()->finFlag) {
          segLen++;
     }
 
-    SessionFlowKey natKey = getKeyFromPacket(blockedPacket);
+    const SessionFlowKey natKey = getKeyFromPacket(blockedPacket);
 
-    // --- 1. RST to SENDER ---
-    // (Termination of the connection from the side that sent the blocked packet)
-    // Addressed to Sender. Seq = IncomingAck.
     {
         uint32_t seq = 0;
         uint32_t ack = 0;
@@ -220,7 +212,6 @@ void sendTcpRst(
 
         if (tcp->getTcpHeader()->ackFlag) {
             seq = tcp->getTcpHeader()->ackNumber;
-            // No need to set ACK implies AckNum=0, AckFlag=0
         } else {
             seq = 0;
             ack = htonl(ntohl(tcp->getTcpHeader()->sequenceNumber) + segLen);
@@ -229,23 +220,14 @@ void sendTcpRst(
 
         sendSingleRst(
             inDev, routingEngine, natService, routingTable,
-            eth->getDestMac(), eth->getSourceMac(),       // Swap MAC
-            ip->getDstIPv4Address(), ip->getSrcIPv4Address(), // Swap IP
-            ntohs(tcp->getTcpHeader()->portDst), ntohs(tcp->getTcpHeader()->portSrc), // Swap Port
+            eth->getDestMac(), eth->getSourceMac(),
+            ip->getDstIPv4Address(), ip->getSrcIPv4Address(),
+            ntohs(tcp->getTcpHeader()->portDst), ntohs(tcp->getTcpHeader()->portSrc),
             seq, ack, ackFlag,
-            natKey // Use same NAT key (Inbound packet -> Inbound usage in NAT)
+            natKey
         );
     }
     
-    // --- 2. RST to RECEIVER ---
-    // (Termination of the connection from the side that was supposed to receive the packet)
-    // Addressed to Receiver. Seq = IncomingSeq (Original).
-    // This looks like the packet we blocked, but with RST flag.
-    // Important: NAT logic.
-    // If blocked packet was Server->Client (Src=8.8.8.8, Dst=104...), we want to send to Client (Dst=10...).
-    // rstPacket constructed here has Src=Server, Dst=104...
-    // When passed to routePacket, it behaves like an Inbound packet.
-    // NAT Service should DNAT it to Client.
     {
         uint32_t seq = tcp->getTcpHeader()->sequenceNumber;
         uint32_t ack = tcp->getTcpHeader()->ackNumber;
@@ -253,9 +235,9 @@ void sendTcpRst(
 
         sendSingleRst(
             inDev, routingEngine, natService, routingTable,
-            eth->getSourceMac(), eth->getDestMac(),       // Keep Direction (Sender -> Receiver)
-            ip->getSrcIPv4Address(), ip->getDstIPv4Address(), // Keep Direction
-            ntohs(tcp->getTcpHeader()->portSrc), ntohs(tcp->getTcpHeader()->portDst), // Keep Direction
+            eth->getSourceMac(), eth->getDestMac(),
+            ip->getSrcIPv4Address(), ip->getDstIPv4Address(),
+            ntohs(tcp->getTcpHeader()->portSrc), ntohs(tcp->getTcpHeader()->portDst),
             seq, ack, ackFlag,
             natKey 
         );
@@ -263,4 +245,3 @@ void sendTcpRst(
 
     std::cout << "[SECURITY] Sent Dual TCP RST to terminate connection." << std::endl;
 }
-

@@ -13,7 +13,7 @@ uint32_t maskToBits(const pcpp::IPv4Address& mask)
     }
     return bits;
 }
-} // namespace
+}
 
 void RoutingTable::addRoute(const pcpp::IPv4Address& network,
                             const pcpp::IPv4Address& mask,

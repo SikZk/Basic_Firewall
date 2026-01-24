@@ -10,14 +10,12 @@
 
 pcpp::IPv4Layer* NatService::applyNat(NatSession session, pcpp::IPv4Layer* ipLayerPacket)
 {
-    // 1. Sprawdź kierunek
-    bool isOutbound = (ipLayerPacket->getSrcIPv4Address() == session.getSourceToDestinationFlow().internal_ip);
-    pcpp::Layer* nextLayer = ipLayerPacket->getNextLayer();
+    const bool isOutbound = (ipLayerPacket->getSrcIPv4Address() == session.getSourceToDestinationFlow().internal_ip);
+    auto* nextLayer = ipLayerPacket->getNextLayer();
 
     if (isOutbound) {
-        // --- OUTBOUND (SNAT) ---
-        pcpp::IPv4Address newSrcIp = session.getDestinationToSourceFlow().external_ip;
-        uint16_t newSrcPort = session.getDestinationToSourceFlow().external_port;
+        const pcpp::IPv4Address newSrcIp = session.getDestinationToSourceFlow().external_ip;
+        const uint16_t newSrcPort = session.getDestinationToSourceFlow().external_port;
         ipLayerPacket->setSrcIPv4Address(newSrcIp);
         ipLayerPacket->getIPv4Header()->headerChecksum = 0;
         ipLayerPacket->computeCalculateFields();
@@ -44,9 +42,8 @@ pcpp::IPv4Layer* NatService::applyNat(NatSession session, pcpp::IPv4Layer* ipLay
         }
     }
     else {
-        // --- INBOUND (Reverse NAT) ---
-        pcpp::IPv4Address originalClientIp = session.getSourceToDestinationFlow().internal_ip;
-        uint16_t originalClientPort = session.getSourceToDestinationFlow().internal_port;
+        const pcpp::IPv4Address originalClientIp = session.getSourceToDestinationFlow().internal_ip;
+        const uint16_t originalClientPort = session.getSourceToDestinationFlow().internal_port;
 
         ipLayerPacket->setDstIPv4Address(originalClientIp);
         ipLayerPacket->getIPv4Header()->headerChecksum = 0;

@@ -1,18 +1,11 @@
-// --- 1. Include ALL System & Library Headers FIRST ---
 #include <iostream>
 #include <vector>
 #include <string>
-#include <sstream>
 #include <thread>
 #include <chrono>
 #include <csignal>
-#include <cstdio>
 #include <unordered_set>
-#include <mutex>
-#include <algorithm>
 #include <memory>
-#include <boost/json.hpp>
-#include <boost/unordered_map.hpp>
 #include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/RawPacket.h"
@@ -45,7 +38,6 @@ static std::unique_ptr<TlsMitmProxy> tlsMitmProxy;
 
 bool runCommand(const std::string& command)
 {
-
     int result = std::system(command.c_str());
     return result == 0;
 }
@@ -75,9 +67,6 @@ static void exitProgram(int) {
     }
 }
 
-
-
-
 void logDecryptedHttpIfReady(DecryptionSession& session)
 {
     if (!session.hasCompleteHttpHeader()) {
@@ -91,32 +80,31 @@ void logDecryptedHttpIfReady(DecryptionSession& session)
 
 static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 {
-
     if (!rawPacket || !inDev) return;
 
     RawPacket rawPacketCopy(*rawPacket);
     Packet packet(&rawPacketCopy);
 
-    EthLayer* eth = packet.getLayerOfType<EthLayer>();
+    auto* eth = packet.getLayerOfType<EthLayer>();
     if (!eth) return;
 
-    pcpp::MacAddress destMac = eth->getDestMac();
-    pcpp::MacAddress myMac = inDev->getMacAddress();
+    const pcpp::MacAddress destMac = eth->getDestMac();
+    const pcpp::MacAddress myMac = inDev->getMacAddress();
 
     if (destMac != myMac && destMac != pcpp::MacAddress::Broadcast) {
         return;
     }
     if (eth->getSourceMac() == inDev->getMacAddress()) return;
 
-    if (packet.isPacketOfType(ARP)){
+    if (packet.isPacketOfType(ARP)) {
         routingEngine.processArpPacket(packet, inDev);
         return;
     }
 
-    IPv4Layer* ipLayer = packet.getLayerOfType<IPv4Layer>();
+    auto* ipLayer = packet.getLayerOfType<IPv4Layer>();
     if (!ipLayer) return;
 
-    TcpLayer* tcpLayer = packet.getLayerOfType<TcpLayer>();
+    auto* tcpLayer = packet.getLayerOfType<TcpLayer>();
     DecryptionSession* decryptSession = nullptr;
     if (tcpLayer && isHttpsPacket(tcpLayer) && configuration.shouldDecryptTraffic(*ipLayer)) {
         const auto* tcpHeader = tcpLayer->getTcpHeader();
@@ -140,7 +128,7 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
             decryptSession = static_cast<DecryptionSession*>(existing);
             const uint8_t* payload = tcpLayer->getLayerPayload();
-            size_t payloadLen = tcpLayer->getLayerPayloadSize();
+            const size_t payloadLen = tcpLayer->getLayerPayloadSize();
             if (payloadLen > 0) {
                 decryptSession->processEncryptedData(payload, payloadLen);
                 logDecryptedHttpIfReady(*decryptSession);
@@ -168,18 +156,18 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
             if (!profile) {
                 continue;
             }
-            Action profile_action = ALLOW;
+            Action profileAction = ALLOW;
             if (decryptSession) {
-                profile_action = profile->scan(*decryptSession, *ipLayer);
+                profileAction = profile->scan(*decryptSession, *ipLayer);
             } else {
-                profile_action = profile->scan(nullptr, *ipLayer);
+                profileAction = profile->scan(nullptr, *ipLayer);
             }
-            if (profile_action == BLOCK) {
+            if (profileAction == BLOCK) {
                 std::cout << "[SECURITY] Dropped packet by security profile: "
                           << ipLayer->getSrcIPv4Address().toString()
                           << " -> " << ipLayer->getDstIPv4Address().toString()
                           << std::endl;
-                
+
                 sendTcpRst(packet, inDev, routingEngine, natService, configuration.routing_table);
                 return;
             }
@@ -197,7 +185,6 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
 
     NatState& state = NatPolicy::nat_state;
 
-    // 1. Inbound (Return Traffic)
     if (ipLayer->getDstIPv4Address() == configuration.public_ip_addr) {
         if (debug) std::cout << "[DEBUG] Direction: INBOUND (Target is External IP)" << std::endl;
         if (Session* sessionPtr = state.table.findSession(key)) {
@@ -206,11 +193,9 @@ static void onPacketArrives(RawPacket* rawPacket, PcapLiveDevice* inDev, void*)
             if (debug) std::cout << "[DEBUG] Applied Reverse NAT. New Dst: " << ipLayer->getDstIPv4Address().toString() << std::endl;
         }
     }
-    // 2. Internal Routing
     else if (isInternalNetwork(ipLayer->getDstIPv4Address())) {
         if (debug) std::cout << "[DEBUG] Direction: INTERNAL ROUTING (Target is 10.x.x.x)" << std::endl;
     }
-    // 3. Outbound (Internet)
     else if (!configuration.nat_policies.empty()) {
         if (debug) std::cout << "[DEBUG] Direction: OUTBOUND (Checking Policies...)" << std::endl;
 
@@ -241,14 +226,11 @@ int main()
 {
     std::cout << "router start\n";
 
-    // --- SYSTEM CONFIGURATION ---
     std::cout << "[SYSTEM] Disabling Kernel Routing..." << std::endl;
     runCommand("sudo sysctl -w net.ipv4.ip_forward=0");
 
     std::cout << "[SYSTEM] Adding iptables rule to drop kernel handling of ports 10000-20000 on eth0..." << std::endl;
-    // Prevent kernel from sending RST for packets delivered to our raw socket
     runCommand("sudo iptables -A INPUT -i eth0 -p tcp --dport 10000:20000 -j DROP");
-    // ----------------------------
 
     std::signal(SIGINT, exitProgram);
     std::signal(SIGTERM, exitProgram);

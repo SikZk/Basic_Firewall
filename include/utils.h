@@ -1,14 +1,12 @@
 #ifndef BASIC_FIREWALL_INCLUDE_UTILS_H
 #define BASIC_FIREWALL_INCLUDE_UTILS_H
 
-#include "pcapplusplus/PcapLiveDeviceList.h"
 #include "pcapplusplus/PcapLiveDevice.h"
 #include "pcapplusplus/IPv4Layer.h"
 #include "pcapplusplus/TcpLayer.h"
 #include <type_traits>
 #include <vector>
 
-// Dependencies
 #include "configuration/Config.h"
 #include "session/session_tables/DecryptionSessionTable.h"
 #include "routing/RoutingEngine.h"
@@ -57,7 +55,6 @@ SessionFlowKey getSessionFlowKey(
     const TcpLayer* tcpLayerPacket
 );
 
-// Moved helper functions
 SessionFlowKey getKeyFromPacket(Packet& packet);
 bool isInternalNetwork(const IPv4Address& ip);
 bool isHttpsPacket(const TcpLayer* tcpLayer);

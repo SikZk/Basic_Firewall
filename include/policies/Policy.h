@@ -14,7 +14,6 @@ public:
     uint16_t source_port;
     uint16_t destination_port;
 
-    // Use std::string instead of std::pmr::string
     Policy(
         std::string network_from_str,
         uint32_t network_from_mask,

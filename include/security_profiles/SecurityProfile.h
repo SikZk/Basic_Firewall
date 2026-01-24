@@ -1,7 +1,3 @@
-//
-// Created by mikolaj on 11/23/25.
-//
-
 #ifndef BASIC_FIREWALL_SECURITYPROFILE_H
 #define BASIC_FIREWALL_SECURITYPROFILE_H
 #include <string>
@@ -16,7 +12,7 @@ enum Action {
 };
 
 class SecurityProfile {
-    public:
+public:
     virtual ~SecurityProfile() = default;
 
     SecurityProfile();

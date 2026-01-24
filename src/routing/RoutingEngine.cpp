@@ -25,7 +25,7 @@ void RoutingEngine::loadInterfaces(std::vector<pcpp::PcapLiveDevice*> ifs) {
             uint64_t macVal = 0;
             uint8_t macArr[6];
             interface->getMacAddress().copyTo(macArr);
-            for(int i=0; i<6; i++) {
+            for (int i = 0; i < 6; i++) {
                 macVal = (macVal << 8) | macArr[i];
             }
             myMacAddresses.insert(macVal);
@@ -59,7 +59,7 @@ std::optional<pcpp::MacAddress> RoutingEngine::lookupArp(const std::string& ifNa
 void RoutingEngine::learnArp(const std::string& ifName, const pcpp::IPv4Address& ip, const pcpp::MacAddress& mac) {
     if (ip == pcpp::IPv4Address::Zero || mac == pcpp::MacAddress::Zero) return;
     std::lock_guard<std::mutex> lock(mtx);
-    arpCache[ifName][ip.toInt()] = ArpEntry{ mac, std::chrono::steady_clock::now() + std::chrono::minutes(20) };
+    arpCache[ifName][ip.toInt()] = ArpEntry{mac, std::chrono::steady_clock::now() + std::chrono::minutes(20)};
 
 }
 
@@ -180,9 +180,6 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
             return;
         }
     }
-    // -------------------------------------------------------
-
-    // 1. Znajdź trasę
     auto route = routing_table.findRoute(dst);
 
     if (!route.has_value()) {
@@ -190,22 +187,18 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     }
 
 
-    // 2. Determine Next Hop IP
     pcpp::IPv4Address nextHop = dst;
     if (route->gateway != pcpp::IPv4Address("0.0.0.0")) {
         nextHop = route->gateway;
     }
 
-    // Zabezpieczenie dodatkowe: Jeśli z jakiegoś powodu NextHop to my sami -> STOP
     if (findInterfaceByName(route->interfaceName)->getIPv4Address() == nextHop) {
         return;
     }
 
-    // 3. Find Output Interface
     pcpp::PcapLiveDevice* outInterface = findInterfaceByName(route->interfaceName);
     if (!outInterface) return;
 
-    // 4. Handle TTL
     auto* iphdr = ip->getIPv4Header();
     if (iphdr->timeToLive <= 1) return;
     iphdr->timeToLive -= 1;

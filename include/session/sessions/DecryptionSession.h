@@ -1,7 +1,3 @@
-//
-// Created by mikolaj on 11/26/25.
-//
-
 #ifndef BASIC_FIREWALL_DECRYPTIONSESSION_H
 #define BASIC_FIREWALL_DECRYPTIONSESSION_H
 #include <cstdint>
@@ -38,7 +34,6 @@ public:
     bool hasCompleteHttpHeader() const;
     std::string getDecryptedDataAsString() const;
     void clearBuffer();
-
 };
 
-#endif //BASIC_FIREWALL_DECRYPTIONSESSION_H
+#endif
