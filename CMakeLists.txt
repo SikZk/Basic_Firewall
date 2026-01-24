@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(Basic_Firewall)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(OpenSSL REQUIRED)
 
 add_executable(Basic_Firewall src/main.cpp
@@ -76,3 +77,12 @@ target_link_libraries(Basic_Firewall_Tests PRIVATE
 )
 
 add_test(NAME Basic_Firewall_Tests COMMAND Basic_Firewall_Tests)
+
+get_target_property(BASIC_FIREWALL_SOURCES Basic_Firewall SOURCES)
+get_target_property(BASIC_FIREWALL_TEST_SOURCES Basic_Firewall_Tests SOURCES)
+set(BASIC_FIREWALL_LINT_SOURCES ${BASIC_FIREWALL_SOURCES} ${BASIC_FIREWALL_TEST_SOURCES})
+list(REMOVE_DUPLICATES BASIC_FIREWALL_LINT_SOURCES)
+add_custom_target(lint
+        COMMAND clang-tidy -p ${CMAKE_BINARY_DIR} ${BASIC_FIREWALL_LINT_SOURCES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
