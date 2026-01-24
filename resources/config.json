@@ -33,10 +33,10 @@
   ],
   "nat_policies": [
     {
-      "src_network": "172.0.0.0",
-      "src_mask": 0,
-      "dest_network": "0.0.0.0",
-      "dest_mask": 0,
+      "src_network": "172.29.102.0",
+      "src_mask": 24,
+      "dest_network": "172.29.200.0",
+      "dest_mask": 24,
       "src_port": 0,
       "dest_port": 0
     }
