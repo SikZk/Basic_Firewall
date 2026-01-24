@@ -1,0 +1,7 @@
+<map id="DecryptionSession" name="DecryptionSession">
+<area shape="rect" id="Node000001" title="Session that tracks TLS decryption state and buffers." alt="" coords="5,183,148,208"/>
+<area shape="rect" id="Node000002" href="$classSession.html" title="Base session tracking data for a flow." alt="" coords="41,108,113,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,148,79,182,74,182,74,148"/>
+<area shape="rect" id="Node000003" href="$structSessionFlow.html" title="Directional flow tuple for a session." alt="" coords="25,5,128,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="79,45,79,108,74,108,74,45"/>
+</map>
