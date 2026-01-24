@@ -59,6 +59,8 @@ add_executable(Basic_Firewall_Tests
         src/security_profiles/SecurityProfile.cpp
         src/security_profiles/UrlFilteringProfile.cpp
         src/security_profiles/AntimalwareProfile.cpp
+        src/session/sessions/Session.cpp
+        src/session/sessions/DecryptionSession.cpp
 )
 target_include_directories(Basic_Firewall_Tests PRIVATE
         include
