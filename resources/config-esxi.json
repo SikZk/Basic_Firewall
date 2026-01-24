@@ -1,0 +1,93 @@
+{
+  "public_ip": "192.168.1.39",
+  "interfaces": {
+    "port1": "ens34",
+    "port2": "ens37",
+    "port3": "ens38"
+  },
+  "routes": [
+    {
+      "network": "10.1.0.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens37"
+    },
+    {
+      "network": "10.2.0.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens38"
+    },
+    {
+      "network": "192.168.1.0",
+      "mask": "255.255.255.0",
+      "gateway": "0.0.0.0",
+      "interface": "ens34"
+    },
+    {
+      "network": "0.0.0.0",
+      "mask": "0.0.0.0",
+      "gateway": "192.168.1.2",
+      "interface": "ens34"
+    }
+  ],
+  "nat_policies": [
+    {
+      "src_network": "10.0.0.0",
+      "src_mask": 0,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "src_port": 0,
+      "dest_port": 0
+    }
+  ],
+  "decryption_profiles": [
+    {
+      "name": "decrypt-https-internal",
+      "ca_certificate_path": "/tmp/Basic_Firewall/resources/certs/ca.crt",
+      "ca_private_key_path": "/tmp/Basic_Firewall/resources/certs/ca.key",
+      "src_network": "10.2.0.0",
+      "src_mask": 24,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0
+    }
+  ],
+  "tls_mitm": {
+    "enabled": true,
+    "listen_port": 8443
+  },
+  "security_policies": [
+    {
+      "src_network": "10.1.0.0",
+      "src_mask": 24,
+      "dest_network": "192.168.1.0",
+      "dest_mask": 24,
+      "src_port": 0,
+      "dest_port": 0,
+      "action": "deny"
+    },
+    {
+      "src_network": "0.0.0.0",
+      "src_mask": 0,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
+      "src_port": 0,
+      "dest_port": 0,
+      "action": "allow",
+      "security_profiles": {
+        "url_filtering": {
+          "blocked_domains": [
+            "example.com",
+            "bad.example.org"
+          ]
+        },
+        "antimalware": {
+          "blocked_hashes": [
+            "44d88612fea8a8f36de82e1278abb02f",
+            "d8e8fca2dc0f896fd7cb4cb0031ba249"
+          ]
+        }
+      }
+    }
+  ]
+}

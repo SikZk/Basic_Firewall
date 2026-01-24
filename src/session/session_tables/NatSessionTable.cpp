@@ -1,5 +1,6 @@
 #include "../../../include/session/session_tables/NatSessionTable.h"
 #include <iostream>
+#include <boost/unordered/unordered_map.hpp>
 
 NatSessionTable::SessionMap NatSessionTable::nat_sessions;
 
