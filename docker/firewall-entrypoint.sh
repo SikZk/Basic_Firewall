@@ -35,8 +35,7 @@ iptables -P INPUT ACCEPT
 iptables -P OUTPUT ACCEPT
 iptables -P FORWARD DROP
 
-# Allow traffic forwarding between networks
-# CAUTION: This logic assumes successful detection.
+
 if [[ -n "${NET1_IF}" && -n "${LAN_IF}" ]]; then
   iptables -A FORWARD -i "${NET1_IF}" -o "${LAN_IF}" -j ACCEPT
   iptables -A FORWARD -i "${LAN_IF}" -o "${NET1_IF}" -m state --state ESTABLISHED,RELATED -j ACCEPT

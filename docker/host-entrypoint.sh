@@ -10,7 +10,7 @@ fi
 case "${SERVICE_NAME:-}" in
   host1) ip route replace default via 172.29.101.1 ;;
   host2) ip route replace default via 172.29.102.1 ;;
-  *) : ;; # do nothing
+  *) : ;;
 esac
 if [[ -n "${DEFAULT_DNS}" ]]; then
   printf "nameserver %s\n" "${DEFAULT_DNS}" > /etc/resolv.conf
