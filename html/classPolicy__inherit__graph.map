@@ -1,0 +1,7 @@
+<map id="Policy" name="Policy">
+<area shape="rect" id="Node000001" title="Base policy with network and port matching criteria." alt="" coords="78,5,139,31"/>
+<area shape="rect" id="Node000002" href="$classNatPolicy.html" title="Policy for applying network address translation." alt="" coords="5,79,89,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,43,59,80,55,77,88,40"/>
+<area shape="rect" id="Node000003" href="$classSecurityPolicy.html" title="Policy that applies security profile evaluation." alt="" coords="114,79,229,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="130,39,163,77,159,80,126,43"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="NatSession" name="NatSession">
+<area shape="rect" id="Node000001" title="Session that tracks NAT translation state." alt="" coords="9,183,104,208"/>
+<area shape="rect" id="Node000002" href="$classSession.html" title="Base session tracking data for a flow." alt="" coords="21,108,93,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="59,148,59,182,54,182,54,148"/>
+<area shape="rect" id="Node000003" href="$structSessionFlow.html" title="Directional flow tuple for a session." alt="" coords="5,5,108,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="59,45,59,108,54,108,54,45"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="NatState" name="NatState">
+<area shape="rect" id="Node000001" title="Shared NAT state including sessions and port pool." alt="" coords="123,168,201,193"/>
+<area shape="rect" id="Node000002" href="$classNatSessionTable.html" title="Table for managing NAT sessions." alt="" coords="5,80,135,105"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,113,151,166,147,169,91,117"/>
+<area shape="rect" id="Node000003" href="$classSessionTable.html" title="Table for storing active sessions." alt="" coords="17,5,123,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="73,45,73,80,67,80,67,45"/>
+<area shape="rect" id="Node000004" href="$classPortPool.html" title="Simple port pool allocator for NAT." alt="" coords="159,80,235,105"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="189,119,169,168,164,166,184,117"/>
+</map>

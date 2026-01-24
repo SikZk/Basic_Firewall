@@ -1,0 +1,5 @@
+<map id="DecryptionSession" name="DecryptionSession">
+<area shape="rect" id="Node000001" title="Session that tracks TLS decryption state and buffers." alt="" coords="5,79,148,104"/>
+<area shape="rect" id="Node000002" href="$classSession.html" title="Base session tracking data for a flow." alt="" coords="41,5,113,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,44,79,79,74,79,74,44"/>
+</map>
