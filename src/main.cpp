@@ -245,9 +245,9 @@ int main()
     std::cout << "[SYSTEM] Disabling Kernel Routing..." << std::endl;
     runCommand("sudo sysctl -w net.ipv4.ip_forward=0");
 
-    std::cout << "[SYSTEM] Adding iptables rule to drop kernel handling of ports 10000-20000 on ens34..." << std::endl;
+    std::cout << "[SYSTEM] Adding iptables rule to drop kernel handling of ports 10000-20000 on eth0..." << std::endl;
     // Prevent kernel from sending RST for packets delivered to our raw socket
-    runCommand("sudo iptables -A INPUT -i ens34 -p tcp --dport 10000:20000 -j DROP");
+    runCommand("sudo iptables -A INPUT -i eth0 -p tcp --dport 10000:20000 -j DROP");
     // ----------------------------
 
     std::signal(SIGINT, exitProgram);
@@ -298,10 +298,10 @@ int main()
 
     bool externalFound = false;
     for (auto* iface : interfaces) {
-        if(iface->getName() == "ens34") externalFound = true;
+        if(iface->getName() == "eth0") externalFound = true;
     }
     if(!externalFound) {
-        if(auto* dev = PcapLiveDeviceList::getInstance().getDeviceByName("ens34"))
+        if(auto* dev = PcapLiveDeviceList::getInstance().getDeviceByName("eth0"))
             interfaces.push_back(dev);
     }
 
