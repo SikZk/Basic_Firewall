@@ -38,19 +38,23 @@ services:
       - NET_ADMIN
       - NET_RAW
     sysctls:
-      net.ipv4.ip_forward: "0"
+      net.ipv4.ip_forward: "1"
     environment:
-      LAN_IF:
+      LAN_IF: eth2
       LAN_GW: 172.29.200.1
       NET1_IF: eth0
       NET2_IF: eth1
     networks:
-      net10_1:
-        ipv4_address: 172.29.101.1
-      net10_2:
-        ipv4_address: 172.29.102.1
       lan:
         ipv4_address: 172.29.200.39
+        interface_name: eth2
+        gw_priority: 1
+      net10_1:
+        ipv4_address: 172.29.101.1
+        interface_name: eth0
+      net10_2:
+        ipv4_address: 172.29.102.1
+        interface_name: eth1
     volumes:
       - ./resources:/opt/basic_firewall/resources:ro
 

@@ -6,7 +6,7 @@ find_if_by_subnet() {
   local subnet_prefix="$1"
   # List all interfaces, look for one that has an IP starting with the prefix
   # filters out lo and possibly docker0 if present, though inside container usually just ethX
-  ip -o -4 addr show | grep " ${subnet_prefix}" | awk '{print $2}' | head -n1
+  ip -o -4 addr show | grep "${subnet_prefix}" | awk '{print $2}' | head -n1
 }
 
 # 172.29.200.0/24 -> LAN

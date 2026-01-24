@@ -16,13 +16,13 @@
       "network": "172.29.102.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
-      "interface": "eth2"
+      "interface": "eth0"
     },
     {
       "network": "172.29.200.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
-      "interface": "eth0"
+      "interface": "eth2"
     },
     {
       "network": "0.0.0.0",
