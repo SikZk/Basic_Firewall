@@ -1,0 +1,7 @@
+<map id="Session" name="Session">
+<area shape="rect" id="Node000001" title="Base session tracking data for a flow." alt="" coords="111,5,183,31"/>
+<area shape="rect" id="Node000002" href="$classDecryptionSession.html" title="Session that tracks TLS decryption state and buffers." alt="" coords="5,79,148,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,43,90,80,86,77,124,39"/>
+<area shape="rect" id="Node000003" href="$classNatSession.html" title="Session that tracks NAT translation state." alt="" coords="172,79,267,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="171,39,210,77,206,80,167,43"/>
+</map>
