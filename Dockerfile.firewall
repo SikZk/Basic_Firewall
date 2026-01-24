@@ -1,0 +1,52 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HOMEBREW_NO_AUTO_UPDATE=1
+ENV HOMEBREW_NO_INSTALL_FROM_API=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        curl \
+        ca-certificates \
+        pkg-config \
+        libssl-dev \
+        libboost-all-dev \
+        iproute2 \
+        iptables \
+        tcpdump \
+        python3 \
+        libpcap-dev \
+        sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash linuxbrew \
+    && echo "linuxbrew ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+RUN su - linuxbrew -c '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+
+RUN su - linuxbrew -c 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install pcapplusplus'
+
+WORKDIR /opt/basic_firewall
+COPY . /opt/basic_firewall
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    build-essential python3 libbz2-dev zlib1g-dev libicu-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p build \
+    && cd build \
+    && cmake .. \
+    && make -j"$(nproc)"
+
+COPY docker/firewall-entrypoint.sh /usr/local/bin/firewall-entrypoint.sh
+RUN chmod +x /usr/local/bin/firewall-entrypoint.sh
+
+WORKDIR /opt/basic_firewall/build
+ENTRYPOINT ["/usr/local/bin/firewall-entrypoint.sh"]
+CMD ["./Basic_Firewall"]

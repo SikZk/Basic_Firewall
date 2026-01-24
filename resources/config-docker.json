@@ -1,39 +1,39 @@
 {
-  "public_ip": "192.168.1.39",
+  "public_ip": "172.29.200.39",
   "interfaces": {
-    "port1": "ens34",
-    "port2": "ens37",
-    "port3": "ens38"
+    "port1": "eth0",
+    "port2": "eth1",
+    "port3": "eth2"
   },
   "routes": [
     {
-      "network": "10.1.0.0",
+      "network": "172.29.101.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
-      "interface": "ens37"
+      "interface": "eth1"
     },
     {
-      "network": "10.2.0.0",
+      "network": "172.29.102.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
-      "interface": "ens38"
+      "interface": "eth2"
     },
     {
-      "network": "192.168.1.0",
+      "network": "172.29.200.0",
       "mask": "255.255.255.0",
       "gateway": "0.0.0.0",
-      "interface": "ens34"
+      "interface": "eth0"
     },
     {
       "network": "0.0.0.0",
       "mask": "0.0.0.0",
-      "gateway": "192.168.1.2",
-      "interface": "ens34"
+      "gateway": "172.29.200.1",
+      "interface": "eth0"
     }
   ],
   "nat_policies": [
     {
-      "src_network": "10.0.0.0",
+      "src_network": "172.0.0.0",
       "src_mask": 0,
       "dest_network": "0.0.0.0",
       "dest_mask": 0,
@@ -44,9 +44,9 @@
   "decryption_profiles": [
     {
       "name": "decrypt-https-internal",
-      "ca_certificate_path": "/tmp/Basic_Firewall/resources/certs/ca.crt",
-      "ca_private_key_path": "/tmp/Basic_Firewall/resources/certs/ca.key",
-      "src_network": "10.2.0.0",
+      "ca_certificate_path": "/opt/basic_firewall/resources/certs/ca.crt",
+      "ca_private_key_path": "/opt/basic_firewall/resources/certs/ca.key",
+      "src_network": "172.29.102.0",
       "src_mask": 24,
       "dest_network": "0.0.0.0",
       "dest_mask": 0
@@ -58,9 +58,9 @@
   },
   "security_policies": [
     {
-      "src_network": "10.1.0.0",
+      "src_network": "172.29.101.0",
       "src_mask": 24,
-      "dest_network": "192.168.1.0",
+      "dest_network": "172.29.200.0",
       "dest_mask": 24,
       "src_port": 0,
       "dest_port": 0,

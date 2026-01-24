@@ -41,11 +41,12 @@ target_link_libraries(Basic_Firewall
         OpenSSL::Crypto
         OpenSSL::SSL
 )
+set(PCAPPLUSPLUS_ROOT /home/linuxbrew/.linuxbrew/opt/pcapplusplus)
 target_include_directories(Basic_Firewall PRIVATE
-        /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/include
+        ${PCAPPLUSPLUS_ROOT}/include
 )
 target_link_directories(Basic_Firewall PRIVATE
-        /home/linuxbrew/.linuxbrew/Cellar/pcapplusplus/25.05/lib
+        ${PCAPPLUSPLUS_ROOT}/lib
 )
 target_link_libraries(Basic_Firewall PRIVATE
         Pcap++ Packet++ Common++ pcap pthread ssl crypto

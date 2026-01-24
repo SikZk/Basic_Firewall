@@ -1,0 +1,17 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+ARG SERVICE_NAME
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        iproute2 \
+        iputils-ping \
+        curl \
+        python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/host-entrypoint.sh /usr/local/bin/host-entrypoint.sh
+RUN chmod +x /usr/local/bin/host-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/host-entrypoint.sh"]
+
+CMD ["sleep", "infinity"]

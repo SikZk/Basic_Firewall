@@ -1,0 +1,77 @@
+services:
+  host1:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+      args:
+        SERVICE_NAME: host1
+    container_name: host1
+    cap_add:
+      - NET_ADMIN
+    environment:
+      DEFAULT_GW: 172.29.101.1
+    networks:
+      net10_1:
+        ipv4_address: 172.29.101.2
+
+  host2:
+    build:
+      context: .
+      dockerfile: Dockerfile.host
+      args:
+        SERVICE_NAME: host2
+    container_name: host2
+    cap_add:
+      - NET_ADMIN
+    environment:
+      DEFAULT_GW: 172.29.102.1
+    networks:
+      net10_2:
+        ipv4_address: 172.29.102.2
+
+  firewall:
+    build:
+      context: .
+      dockerfile: Dockerfile.firewall
+    container_name: firewall
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    environment:
+      LAN_IF:
+      LAN_GW: 172.29.200.1
+      NET1_IF: eth0
+      NET2_IF: eth1
+    networks:
+      net10_1:
+        ipv4_address: 172.29.101.1
+      net10_2:
+        ipv4_address: 172.29.102.1
+      lan:
+        ipv4_address: 172.29.200.39
+    volumes:
+      - ./resources:/opt/basic_firewall/resources:ro
+
+networks:
+  net10_1:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.29.101.0/24
+          gateway: 172.29.101.254
+  net10_2:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.29.102.0/24
+          gateway: 172.29.102.254
+  lan:
+    driver: bridge
+    driver_opts:
+      parent: wlp131s0
+    ipam:
+      config:
+        - subnet: 172.29.200.0/24
+          gateway: 172.29.200.1
