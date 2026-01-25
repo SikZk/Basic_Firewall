@@ -9,8 +9,11 @@ RUN apt-get update \
         python3 \
     && rm -rf /var/lib/apt/lists/*
 
+RUN sed -i 's/\r$//' /usr/local/bin/host-entrypoint.sh \
+    && chmod +x /usr/local/bin/host-entrypoint.sh    
 COPY docker/host-entrypoint.sh /usr/local/bin/host-entrypoint.sh
-RUN chmod +x /usr/local/bin/host-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/host-entrypoint.sh \
+    && chmod +x /usr/local/bin/host-entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/host-entrypoint.sh"]
 

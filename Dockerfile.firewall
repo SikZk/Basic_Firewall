@@ -56,8 +56,13 @@ RUN mkdir -p build \
     && cmake .. \
     && make -j"$(nproc)"
 
+    
+
 COPY docker/firewall-entrypoint.sh /usr/local/bin/firewall-entrypoint.sh
-RUN chmod +x /usr/local/bin/firewall-entrypoint.sh
+
+
+RUN sed -i 's/\r$//' /usr/local/bin/firewall-entrypoint.sh \
+    && chmod +x /usr/local/bin/firewall-entrypoint.sh
 
 WORKDIR /opt/basic_firewall/build
 ENTRYPOINT ["/usr/local/bin/firewall-entrypoint.sh"]
