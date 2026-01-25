@@ -6,6 +6,7 @@
 #include "pcapplusplus/TcpLayer.h"
 #include <type_traits>
 #include <vector>
+#include "pcapplusplus/UdpLayer.h"
 
 #include "configuration/Config.h"
 #include "session/session_tables/DecryptionSessionTable.h"

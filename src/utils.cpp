@@ -100,6 +100,7 @@ bool isNotEncryptedSession(Session*)
 SessionFlowKey getKeyFromPacket(Packet& packet) {
     auto* ip = packet.getLayerOfType<IPv4Layer>();
     auto* tcp = packet.getLayerOfType<TcpLayer>();
+    auto* udp = packet.getLayerOfType<UdpLayer>();
     auto* icmp = packet.getLayerOfType<IcmpLayer>();
 
     SessionFlowKey key;
@@ -112,6 +113,10 @@ SessionFlowKey getKeyFromPacket(Packet& packet) {
         key.protocol = pcpp::TCP;
         key.src_port = ntohs(tcp->getTcpHeader()->portSrc);
         key.dst_port = ntohs(tcp->getTcpHeader()->portDst);
+    } else if (udp) {
+        key.protocol = pcpp::UDP;
+        key.src_port = ntohs(udp->getUdpHeader()->portSrc);
+        key.dst_port = ntohs(udp->getUdpHeader()->portDst);
     } else if (icmp) {
         key.protocol = pcpp::ICMP;
         uint16_t id = 0;
@@ -127,7 +132,7 @@ SessionFlowKey getKeyFromPacket(Packet& packet) {
 }
 
 bool isInternalNetwork(const IPv4Address& ip) {
-    return ip.toString().rfind("10.", 0) == 0;
+    return ip.toString().rfind("172.29.1", 0) == 0;
 }
 
 bool isHttpsPacket(const TcpLayer* tcpLayer)

@@ -202,7 +202,7 @@ void RoutingEngine::routePacket(pcpp::Packet& packet, pcpp::PcapLiveDevice* inIn
     auto* iphdr = ip->getIPv4Header();
     if (iphdr->timeToLive <= 1) return;
     iphdr->timeToLive -= 1;
-    ip->computeCalculateFields();
+    packet.computeCalculateFields();
     eth->setSourceMac(outInterface->getMacAddress());
 
     auto macOpt = lookupArp(outInterface->getName(), nextHop);

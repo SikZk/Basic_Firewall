@@ -6,6 +6,14 @@ ENV HOMEBREW_NO_INSTALL_FROM_API=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        iproute2 \
+        iputils-ping \
+        curl \
+        python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
         git \

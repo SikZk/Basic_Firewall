@@ -1,9 +1,9 @@
 {
   "public_ip": "172.29.200.39",
   "interfaces": {
-    "port1": "eth0",
-    "port2": "eth1",
-    "port3": "eth2"
+    "port1": "eth2",
+    "port2": "eth0",
+    "port3": "eth1"
   },
   "routes": [
     {
@@ -35,8 +35,8 @@
     {
       "src_network": "172.29.102.0",
       "src_mask": 24,
-      "dest_network": "172.29.200.0",
-      "dest_mask": 24,
+      "dest_network": "0.0.0.0",
+      "dest_mask": 0,
       "src_port": 0,
       "dest_port": 0
     }
@@ -67,7 +67,7 @@
       "action": "deny"
     },
     {
-      "src_network": "0.0.0.0",
+      "src_network": "172.29.102.0",
       "src_mask": 0,
       "dest_network": "0.0.0.0",
       "dest_mask": 0,
