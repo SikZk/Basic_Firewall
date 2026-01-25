@@ -268,6 +268,7 @@ int main()
                 }
                 auto* session = static_cast<DecryptionSession*>(existing);
                 session->processDecryptedData(reinterpret_cast<const uint8_t*>(data.data()), data.size());
+                logDecryptedHttpIfReady(*session);
             });
         tlsMitmProxy->start();
         configureTlsMitmRedirect(configuration.tls_mitm_port, true);
