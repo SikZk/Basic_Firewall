@@ -4,4 +4,3 @@ cd tests
 sudo chmod +x open_terminals.sh
 sudo ./open_terminals.sh
 ```
-

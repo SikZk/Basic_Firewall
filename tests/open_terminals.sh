@@ -37,3 +37,5 @@ echo "Opening terminal for firewall..."
 open_terminal "firewall"
 
 echo "Terminals launched."
+
+sudo docker compose logs -f firewall
